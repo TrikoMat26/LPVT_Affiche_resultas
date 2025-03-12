@@ -69,7 +69,6 @@ def analyser_fichier_html(chemin_fichier):
     return donnees
 
 def main():
-    # 1) Sélection du répertoire avec une boîte de dialogue
     root = tk.Tk()
     root.withdraw()
     repertoire = filedialog.askdirectory(title="Choisissez un répertoire contenant les rapports HTML")
@@ -77,20 +76,26 @@ def main():
         print("Aucun répertoire sélectionné, fin du script.")
         return
 
-    # 2) Lister tous les fichiers HTML dans le répertoire
+    # On récupère le nom du répertoire pour l'utiliser comme numéro de série
+    numero_serie = os.path.basename(repertoire)
+    
+    # Liste tous les fichiers HTML dans le répertoire
     html_files = [f for f in os.listdir(repertoire) if f.lower().endswith(".html")]
     if not html_files:
         print("Aucun fichier HTML trouvé dans ce répertoire.")
         return
 
-    # 3) Analyser chaque fichier et construire un compte-rendu
+    # Prépare le rapport dans une liste de chaînes
     rapport_final = []
+    
+    # Ajouter une ligne pour le numéro de série
+    rapport_final.append(f"Numéro de série : {numero_serie}\n")
 
     for nom_fic in html_files:
         chemin_complet = os.path.join(repertoire, nom_fic)
         resultats = analyser_fichier_html(chemin_complet)
 
-        rapport_final.append(f"Voici les tests en défaut dans le fichier {resultats['nom_fichier']} :\n")
+        rapport_final.append(f"{resultats['nom_fichier']} :\n")
 
         # Résultat global
         if resultats["resultat_global"]:
@@ -106,16 +111,14 @@ def main():
         else:
             rapport_final.append("\n2. Tests en échec :")
             for idx, test_fail in enumerate(resultats["tests_echec"], start=1):
-                # Indiquer (rouge) si c'est Failed, ou préciser le statut si Terminated
+                # Indiquer (rouge) si c'est Failed, ou préciser (terminated) si Terminated
                 if test_fail["status"] == "Failed":
                     status_str = "(rouge)"
                 else:
-                    # ex: "Terminated" => on peut mettre (terminated) en minuscule
                     status_str = f"({test_fail['status'].lower()})"
 
                 rapport_final.append(f"   {idx}) {test_fail['nom_test']}")
                 rapport_final.append(f"      Statut : {test_fail['status']} {status_str}")
-
                 if test_fail["detail"]:
                     lignes = test_fail["detail"].split("\n")
                     for ligne in lignes:
@@ -124,12 +127,14 @@ def main():
 
         rapport_final.append("-" * 70)  # Séparateur entre fichiers
 
-    # 4) Écrire le compte-rendu dans un nouveau fichier texte
-    fichier_resultat = os.path.join(repertoire, "resultats_tests.txt")
+    # Nom du fichier = numéro de série + "_resultats_tests.txt"
+    fichier_resultat = os.path.join(repertoire, f"{numero_serie}_resultats_tests.txt")
+
+    # On écrit le rapport dans ce fichier
     with open(fichier_resultat, "w", encoding="utf-8", errors="replace") as f:
         f.write("\n".join(rapport_final))
 
-    # 5) Ouvrir le fichier texte dans le Bloc-notes Windows
+    # On ouvre le fichier texte dans le Bloc-notes
     subprocess.run(["notepad", fichier_resultat], check=False)
 
 if __name__ == "__main__":
