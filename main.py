@@ -28,7 +28,7 @@ def analyser_fichier_html(chemin_fichier):
         "tests_echec": []
     }
 
-    with open(chemin_fichier, "r", encoding="utf-8", errors="replace") as f:
+    with open(chemin_fichier, "r", encoding="iso-8859-1", errors="replace") as f:
         soup = BeautifulSoup(f, "html.parser")
 
     # 1) Récupérer le résultat global (UUT Result)
