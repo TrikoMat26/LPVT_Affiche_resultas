@@ -23,7 +23,7 @@ def analyser_fichier_html(chemin_fichier):
         soup = BeautifulSoup(f, "html.parser")
 
     # 1) Récupérer le "UUT Result" (résultat global)
-    balise_resultat = soup.find("td", class_="hdr_name", text=lambda t: t and "UUT Result:" in t)
+    balise_resultat = soup.find("td", class_="hdr_name", string=lambda t: t and "UUT Result:" in t)
     if balise_resultat:
         balise_valeur = balise_resultat.find_next_sibling("td", class_="hdr_value")
         if balise_valeur:
