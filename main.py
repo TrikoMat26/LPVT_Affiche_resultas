@@ -4,6 +4,31 @@ import tkinter as tk
 from tkinter import filedialog
 from bs4 import BeautifulSoup
 
+def formater_nom_fichier(nom_fichier):
+    """
+    Reformate le nom du fichier selon le format désiré
+    De: SEQ-01_LPVT_Report[15 35 54][27 01 2025].html
+    Vers: SEQ-01_[27 01 2025] [15 35 54]
+    """
+    # Enlever l'extension .html
+    nom_sans_ext = os.path.splitext(nom_fichier)[0]
+    
+    # Extraire les parties du nom
+    parties = nom_sans_ext.split('_')
+    if len(parties) >= 3:
+        sequence = parties[0]  # SEQ-01
+        # Extraire la date et l'heure entre crochets
+        import re
+        horodatage = parties[-1]  # Report[15 35 54][27 01 2025]
+        matches = re.findall(r'\[(.*?)\]', horodatage)
+        if len(matches) >= 2:
+            heure = matches[0]
+            date = matches[1]
+            return f"{sequence} [{date}] [{heure}]"
+    
+    # Si le format n'est pas celui attendu, retourner le nom original
+    return nom_fichier
+
 def analyser_fichier_html(chemin_fichier):
     """
     Analyse un rapport HTML et renvoie un dictionnaire contenant :
@@ -12,7 +37,7 @@ def analyser_fichier_html(chemin_fichier):
       - tests_echec : une liste de tests en échec (chacun étant un dict avec nom_test, detail, status)
     """
     donnees = {
-        "nom_fichier": os.path.basename(chemin_fichier),
+        "nom_fichier": formater_nom_fichier(os.path.basename(chemin_fichier)),
         "resultat_global": None,
         "tests_echec": []
     }
@@ -89,7 +114,8 @@ def main():
     rapport_final = []
     
     # Ajouter une ligne pour le numéro de série
-    rapport_final.append(f"Numéro de série : {numero_serie}\n")
+    rapport_final.append(f"Numéro de série : {numero_serie}")
+    rapport_final.append("-" * 70)  # Séparateur entre fichiers
 
     for nom_fic in html_files:
         chemin_complet = os.path.join(repertoire, nom_fic)
