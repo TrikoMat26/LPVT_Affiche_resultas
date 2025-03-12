@@ -128,14 +128,14 @@ def main():
         rapport_final.append("-" * 70)  # Séparateur entre fichiers
 
     # Nom du fichier = numéro de série + "_resultats_tests.txt"
-    fichier_resultat = os.path.join(repertoire, f"{numero_serie}_resultats_tests.txt")
+    fichier_resultat = os.path.join(repertoire, f"{numero_serie}_LPVT.txt")
 
     # On écrit le rapport dans ce fichier
     with open(fichier_resultat, "w", encoding="utf-8", errors="replace") as f:
         f.write("\n".join(rapport_final))
 
-    # On ouvre le fichier texte dans le Bloc-notes
-    subprocess.run(["notepad", fichier_resultat], check=False)
+    # On ouvre le fichier texte dans le Bloc-notes sans attendre sa fermeture
+    subprocess.Popen(["notepad", fichier_resultat])
 
 if __name__ == "__main__":
     main()
