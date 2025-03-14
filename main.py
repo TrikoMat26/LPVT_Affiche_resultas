@@ -3,6 +3,7 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog
 from bs4 import BeautifulSoup
+import sys
 
 def formater_nom_fichier(nom_fichier):
     """
@@ -42,126 +43,200 @@ def analyser_fichier_html(chemin_fichier):
         "tests_echec": []
     }
 
-    # Les rapports indiquent souvent charset=iso-8859-1 ; on peut donc tester cet encodage
-    # Ajustez au besoin (cp1252, utf-8, etc.) si les accents ne s'affichent pas correctement
-    with open(chemin_fichier, "r", encoding="iso-8859-1", errors="replace") as f:
-        soup = BeautifulSoup(f, "html.parser")
+    try:
+        # Les rapports indiquent souvent charset=iso-8859-1
+        with open(chemin_fichier, "r", encoding="iso-8859-1", errors="replace") as f:
+            html_content = f.read()
+            soup = BeautifulSoup(html_content, "html.parser")
 
-    # 1) Récupérer le "UUT Result" (résultat global)
-    balise_resultat = soup.find("td", class_="hdr_name", string=lambda t: t and "UUT Result:" in t)
-    if balise_resultat:
-        balise_valeur = balise_resultat.find_next_sibling("td", class_="hdr_value")
-        if balise_valeur:
-            donnees["resultat_global"] = balise_valeur.get_text(strip=True)
-
-    # 2) Récupérer les tests en échec (statuts = Failed ou Terminated)
-    statuts_echec = {"Failed", "Terminated"}
-    for balise_status_label in soup.find_all("td", class_="label"):
-        if "Status:" in balise_status_label.get_text(strip=True):
-            balise_status_value = balise_status_label.find_next_sibling("td", class_="value")
-            if balise_status_value:
-                status_text = balise_status_value.get_text(strip=True)
-                if status_text in statuts_echec:
-                    # On considère ce bloc comme un échec
-                    nom_test = "Nom de test inconnu"
-
-                    # Essayer de récupérer le nom du test dans la ligne précédente (ou un <td colspan='2'>)
-                    previous_tr = balise_status_label.find_parent("tr").find_previous_sibling("tr")
-                    if previous_tr:
-                        td_colspan = previous_tr.find("td", colspan="2")
-                        if td_colspan:
-                            nom_test = td_colspan.get_text(strip=True)
-
-                    # Extraire plus de détails (ex: Valeur réelle injectée, Valeur sortie, etc.)
-                    details_test = []
-                    next_tr = balise_status_label.find_parent("tr").find_next_sibling("tr")
-                    while next_tr:
-                        # Si on retombe sur un nouveau "Status:", on arrête
-                        candidate_label = next_tr.find("td", class_="label")
-                        if candidate_label and "Status:" in candidate_label.get_text(strip=True):
-                            break
-                        details_test.append(next_tr.get_text(" ", strip=True))
-                        next_tr = next_tr.find_next_sibling("tr")
-
-                    detail_texte = "\n".join(details_test)
-
+        # 1) Récupérer le "UUT Result" (résultat global)
+        balise_resultat = soup.find("td", class_="hdr_name", string=lambda t: t and "UUT Result:" in t)
+        if balise_resultat:
+            balise_valeur = balise_resultat.find_next_sibling("td", class_="hdr_value")
+            if balise_valeur:
+                donnees["resultat_global"] = balise_valeur.text.strip()
+        
+        # 2) Récupérer le numéro de série si disponible
+        balise_sn = soup.find("td", class_="hdr_name", string=lambda t: t and "Serial Number:" in t)
+        if balise_sn:
+            balise_sn_value = balise_sn.find_next_sibling("td", class_="hdr_value")
+            if balise_sn_value:
+                donnees["numero_serie"] = balise_sn_value.text.strip()
+        
+        # 3) Récupérer les tests en échec (statuts = Failed ou Terminated)
+        statuts_echec = {"Failed", "Terminated"}
+        
+        # Chercher tous les tables de résultats
+        for table in soup.find_all("table", style=True):
+            # Récupérer le titre du test s'il existe (dans un colspan="2")
+            nom_test = "Test inconnu"
+            titre_cell = table.find("td", colspan="2")
+            if titre_cell:
+                nom_test = titre_cell.get_text(strip=True)
+            
+            # Chercher le statut dans cette table
+            status_label = table.find("td", class_="label", string=lambda t: t and "Status:" in t)
+            if status_label:
+                status_value = status_label.find_next_sibling("td", class_="value")
+                if status_value and status_value.get_text(strip=True) in statuts_echec:
+                    # On a trouvé un test en échec, récupérer tous les détails
+                    status_text = status_value.get_text(strip=True)
+                    
+                    # Collecter tous les détails du test
+                    details = []
+                    
+                    # 1. Récupérer tous les labels et leurs valeurs associées dans cette table
+                    for label in table.find_all("td", class_="label"):
+                        if "Status:" not in label.get_text(strip=True):  # Éviter de répéter le statut
+                            value = label.find_next_sibling("td", class_="value")
+                            if value:
+                                label_text = label.get_text(strip=True)
+                                value_text = value.get_text(strip=True)
+                                if value_text:  # Ne pas ajouter les champs vides
+                                    details.append(f"{label_text} {value_text}")
+                    
+                    # 2. Récupérer spécifiquement les informations de mesure (comme observé dans le HTML)
+                    # Rechercher des patterns comme "Valeur réelle injectée / Valeur sortie attendue..."
+                    for label in table.find_all("td", class_="label"):
+                        if "Valeur" in label.get_text(strip=True) or "ROUE CODEUSE" in label.get_text(strip=True):
+                            value = label.find_next_sibling("td", class_="value")
+                            if value:
+                                label_text = label.get_text(strip=True)
+                                value_text = value.get_text(strip=True)
+                                details.append(f"{label_text} {value_text}")
+                    
+                    # 3. Chercher les messages d'erreur spécifiques
+                    error_label = table.find("td", class_="label", string=lambda t: t and "Error Info:" in t)
+                    if error_label:
+                        error_value = error_label.find_next_sibling("td", class_="value")
+                        if error_value:
+                            details.append(f"Erreur: {error_value.get_text(strip=True)}")
+                    
+                    # Construire la chaîne de détails finale
+                    detail_text = "\n".join(details) if details else "Pas de détail disponible"
+                    
+                    # Ajouter ce test en échec à la liste
                     donnees["tests_echec"].append({
                         "nom_test": nom_test,
-                        "detail": detail_texte,
-                        "status": status_text
+                        "status": status_text,
+                        "detail": detail_text
                     })
-
+    except Exception as e:
+        print(f"Erreur lors de l'analyse du fichier {chemin_fichier}: {e}")
+    
     return donnees
 
+def trouver_fichiers_html(repertoire):
+    """
+    Trouve tous les fichiers HTML dans le répertoire spécifié (non récursif)
+    """
+    fichiers_html = []
+    
+    try:
+        for fichier in os.listdir(repertoire):
+            if fichier.lower().endswith('.html'):
+                chemin_complet = os.path.join(repertoire, fichier)
+                fichiers_html.append(chemin_complet)
+        print(f"Trouvé {len(fichiers_html)} fichiers HTML dans {repertoire}")
+    except Exception as e:
+        print(f"Erreur lors de la recherche de fichiers dans {repertoire}: {e}")
+    
+    return fichiers_html
+
+def traiter_repertoire_serie(chemin_repertoire):
+    """
+    Traite un répertoire de numéro de série et crée un rapport dans ce répertoire
+    """
+    numero_serie = os.path.basename(chemin_repertoire)
+    print(f"Traitement du numéro de série: {numero_serie}")
+    
+    # Trouver tous les fichiers HTML dans ce répertoire (non récursif)
+    chemins_html = trouver_fichiers_html(chemin_repertoire)
+    
+    if not chemins_html:
+        print(f"Aucun fichier HTML trouvé pour le numéro de série {numero_serie}")
+        return
+    
+    # Générer le rapport pour ce numéro de série
+    rapport_final = []
+    rapport_final.append(f"Numéro de série : {numero_serie}")
+    rapport_final.append("-" * 70)  # Séparateur
+    
+    for chemin_complet in chemins_html:
+        try:
+            resultats = analyser_fichier_html(chemin_complet)
+            statut = resultats["resultat_global"] or "Inconnu"
+            rapport_final.append(f"{resultats['nom_fichier']} : {statut}")
+            
+            # Ajouter les détails des tests en échec avec formatage amélioré
+            if resultats["tests_echec"]:
+                rapport_final.append("  Tests en échec:")
+                for test in resultats["tests_echec"]:
+                    rapport_final.append(f"    - {test['nom_test']} ({test['status']})")
+                    
+                    # Formater les détails avec une indentation propre
+                    for ligne in test['detail'].split('\n'):
+                        if ligne.strip():  # Ne pas ajouter les lignes vides
+                            # Ajouter une indentation pour une meilleure lisibilité
+                            rapport_final.append(f"      * {ligne}")
+                    
+                    # Ajouter une ligne vide entre les tests
+                    rapport_final.append("")
+            
+        except Exception as e:
+            print(f"Erreur lors du traitement de {chemin_complet}: {e}")
+    
+    # Créer le fichier de rapport dans le répertoire du numéro de série
+    nom_fichier_rapport = f"rapport_{numero_serie}.txt"
+    chemin_fichier_rapport = os.path.join(chemin_repertoire, nom_fichier_rapport)
+    
+    try:
+        with open(chemin_fichier_rapport, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(rapport_final))
+        print(f"Rapport créé: {chemin_fichier_rapport}")
+    
+        # Ouvrir le rapport
+        subprocess.Popen(['notepad.exe', chemin_fichier_rapport])
+    except Exception as e:
+        print(f"Erreur lors de la création/ouverture du rapport: {e}")
+
 def main():
+    # Configuration pour l'affichage des caractères accentués
+    if sys.stdout.encoding != 'utf-8':
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
+    # Configuration de l'interface Tkinter
     root = tk.Tk()
     root.withdraw()
-    repertoire = filedialog.askdirectory(title="Choisissez un répertoire contenant les rapports HTML")
-    if not repertoire:
+    
+    # Sélectionner le répertoire parent qui contient les répertoires de numéros de série
+    print("Veuillez sélectionner le répertoire contenant les dossiers de numéros de série...")
+    repertoire_parent = filedialog.askdirectory(title="Choisissez le répertoire contenant les dossiers de numéros de série")
+    if not repertoire_parent:
         print("Aucun répertoire sélectionné, fin du script.")
         return
-
-    # On récupère le nom du répertoire pour l'utiliser comme numéro de série
-    numero_serie = os.path.basename(repertoire)
     
-    # Liste tous les fichiers HTML dans le répertoire
-    html_files = [f for f in os.listdir(repertoire) if f.lower().endswith(".html")]
-    if not html_files:
-        print("Aucun fichier HTML trouvé dans ce répertoire.")
+    print(f"Répertoire sélectionné: {repertoire_parent}")
+    
+    # Obtenir tous les sous-répertoires directs (les numéros de série)
+    try:
+        sous_repertoires = [os.path.join(repertoire_parent, d) for d in os.listdir(repertoire_parent) 
+                            if os.path.isdir(os.path.join(repertoire_parent, d))]
+        print(f"Sous-répertoires trouvés: {len(sous_repertoires)}")
+    except Exception as e:
+        print(f"Erreur lors de la recherche des sous-répertoires: {e}")
         return
-
-    # Prépare le rapport dans une liste de chaînes
-    rapport_final = []
     
-    # Ajouter une ligne pour le numéro de série
-    rapport_final.append(f"Numéro de série : {numero_serie}")
-    rapport_final.append("-" * 70)  # Séparateur entre fichiers
-
-    for nom_fic in html_files:
-        chemin_complet = os.path.join(repertoire, nom_fic)
-        resultats = analyser_fichier_html(chemin_complet)
-
-        rapport_final.append(f"{resultats['nom_fichier']} :\n")
-
-        # Résultat global
-        if resultats["resultat_global"]:
-            rapport_final.append(f"1. Résultat global du test : \"{resultats['resultat_global']}\"")
-            if resultats["resultat_global"].lower() == "terminated":
-                rapport_final.append("   Le test global a été interrompu avant d'être complété.")
-        else:
-            rapport_final.append("1. Résultat global du test : inconnu")
-
-        # Tests en échec
-        if not resultats["tests_echec"]:
-            rapport_final.append("\n2. Aucun test en échec.\n")
-        else:
-            rapport_final.append("\n2. Tests en échec :")
-            for idx, test_fail in enumerate(resultats["tests_echec"], start=1):
-                # Indiquer (rouge) si c'est Failed, ou préciser (terminated) si Terminated
-                if test_fail["status"] == "Failed":
-                    status_str = "(rouge)"
-                else:
-                    status_str = f"({test_fail['status'].lower()})"
-
-                rapport_final.append(f"   {idx}) {test_fail['nom_test']}")
-                rapport_final.append(f"      Statut : {test_fail['status']} {status_str}")
-                if test_fail["detail"]:
-                    lignes = test_fail["detail"].split("\n")
-                    for ligne in lignes:
-                        rapport_final.append(f"      {ligne}")
-                rapport_final.append("")
-
-        rapport_final.append("-" * 70)  # Séparateur entre fichiers
-
-    # Nom du fichier = numéro de série + "_resultats_tests.txt"
-    fichier_resultat = os.path.join(repertoire, f"{numero_serie}_LPVT.txt")
-
-    # On écrit le rapport dans ce fichier
-    with open(fichier_resultat, "w", encoding="utf-8", errors="replace") as f:
-        f.write("\n".join(rapport_final))
-
-    # On ouvre le fichier texte dans le Bloc-notes sans attendre sa fermeture
-    subprocess.Popen(["notepad", fichier_resultat])
+    if not sous_repertoires:
+        print("Aucun sous-répertoire trouvé.")
+        return
+    
+    # Traiter chaque répertoire de numéro de série indépendamment
+    for repertoire in sous_repertoires:
+        traiter_repertoire_serie(repertoire)
+    
+    print("Traitement terminé.")
 
 if __name__ == "__main__":
     main()
