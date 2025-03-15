@@ -1,0 +1,24 @@
+Voici comment compiler correctement votre script Python en un exécutable Windows :
+
+D'abord, installez PyInstaller si ce n'est pas déjà fait :
+
+	pip install pyinstaller
+
+Ensuite, utilisez l'une des méthodes suivantes pour créer l'exécutable :
+  Option 1 : Dans PowerShell, utilisez le point-virgule ; pour chaîner les commandes :
+
+	cd f:\GitHub\LPVT_Affiche_resultas; pyinstaller --onefile --windowed main.py
+
+  Option 2 : Ou exécutez simplement la commande directement sans changer de répertoire :
+
+	pyinstaller --onefile --windowed f:\GitHub\LPVT_Affiche_resultas\main.py
+
+  Option 3 : Ou naviguez d'abord vers le répertoire, puis exécutez PyInstaller :
+
+	cd f:\GitHub\LPVT_Affiche_resultas
+	pyinstaller --onefile --windowed main.py
+
+L'option --onefile crée un exécutable autonome unique au lieu de plusieurs fichiers.
+L'option --windowed (ou -w) empêche une fenêtre console de s'ouvrir à l'exécution.
+
+Après l'exécution de cette commande, vous trouverez votre exécutable dans le dossier dist qui sera créé dans votre répertoire de travail. Le fichier sera nommé main.exe et pourra être exécuté sur n'importe quel ordinateur Windows sans avoir besoin d'installer Python.

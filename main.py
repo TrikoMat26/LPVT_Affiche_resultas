@@ -382,9 +382,14 @@ def traiter_repertoire_serie(chemin_repertoire):
 
 def main():
     # Configuration pour l'affichage des caractères accentués
-    if sys.stdout.encoding != 'utf-8':
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    # Version robuste qui fonctionne aussi en exécutable
+    try:
+        if sys.stdout and hasattr(sys.stdout, 'encoding') and sys.stdout.encoding != 'utf-8':
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    except (AttributeError, TypeError):
+        # En cas d'erreur, on continue sans changer l'encodage
+        pass
     
     # Configuration de l'interface Tkinter
     root = tk.Tk()
