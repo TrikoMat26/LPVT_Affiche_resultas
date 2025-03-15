@@ -5,6 +5,9 @@ from tkinter import filedialog
 from bs4 import BeautifulSoup
 import sys
 import re
+from datetime import datetime
+import webbrowser
+from collections import defaultdict
 
 def formater_nom_fichier(nom_fichier):
     """
@@ -298,6 +301,258 @@ def trouver_fichiers_html(repertoire):
     
     return fichiers_html
 
+def extraire_date_heure_du_nom(nom_fichier):
+    """
+    Extrait la date et l'heure du nom du fichier pour le tri chronologique
+    """
+    matches = re.findall(r'\[(.*?)\]', nom_fichier)
+    if len(matches) >= 2:
+        heure = matches[0].split()
+        date = matches[1].split()
+        # Format: jour mois année heure minute seconde
+        if len(date) >= 3 and len(heure) >= 3:
+            try:
+                # Date au format "DD MM YYYY"
+                jour, mois, annee = date
+                # Heure au format "HH MM SS"
+                heures, minutes, secondes = heure
+                
+                date_heure = f"{annee}-{mois}-{jour} {heures}:{minutes}:{secondes}"
+                return datetime.strptime(date_heure, "%Y-%m-%d %H:%M:%S")
+            except (ValueError, IndexError):
+                pass
+    return datetime.min  # Date minimale par défaut
+
+def organiser_defauts_par_type(resultats_tests):
+    """
+    Organise les défauts par type (roue codeuse, voie, gamme) à travers les différentes séquences de test
+    """
+    defauts_par_type = defaultdict(list)
+    
+    # Parcourir tous les résultats de test
+    for test_info in resultats_tests:
+        nom_fichier = test_info["nom_fichier"]
+        date_test = extraire_date_heure_du_nom(nom_fichier)
+        
+        # Parcourir les tests en échec
+        for test_echec in test_info["tests_echec"]:
+            nom_test = test_echec["nom_test"]
+            status = test_echec["status"]
+            detail = test_echec["detail"]
+            
+            # Identifier le type de défaut (roue codeuse + gamme + voie)
+            type_defaut = "Non catégorisé"
+            
+            # Chercher le pattern de la roue codeuse dans le détail
+            rc_match = re.search(r"Configuration: ROUE CODEUSE=([^ |]+) \| GAMME=([^ |]+) \| Voie=([^ |]+)", detail)
+            if rc_match:
+                roue = rc_match.group(1)
+                gamme = rc_match.group(2)
+                voie = rc_match.group(3)
+                type_defaut = f"ROUE CODEUSE={roue}, GAMME={gamme}, Voie={voie}"
+            
+            # Ajouter ce défaut à la liste correspondant à ce type
+            defauts_par_type[type_defaut].append({
+                "nom_fichier": nom_fichier,
+                "date_test": date_test,
+                "nom_test": nom_test,
+                "status": status,
+                "detail": detail
+            })
+    
+    # Trier chaque liste de défauts par date de test
+    for defaut_type, defauts in defauts_par_type.items():
+        defauts_par_type[defaut_type] = sorted(defauts, key=lambda x: x["date_test"])
+    
+    return defauts_par_type
+
+def generer_rapport_html(chemin_repertoire, resultats_tests):
+    """
+    Génère un rapport HTML interactif avec une meilleure visualisation des défauts
+    """
+    numero_serie = os.path.basename(chemin_repertoire)
+    
+    # Extraire les infos sur les résistances des séquences SEQ-01
+    infos_resistances = None
+    for test_info in resultats_tests:
+        if test_info["sequence"] == "SEQ-01" and test_info["resistances"]:
+            infos_resistances = test_info["resistances"]
+            break
+    
+    # Organiser les défauts par type
+    defauts_par_type = organiser_defauts_par_type(resultats_tests)
+    
+    # Générer le contenu HTML
+    html_content = [
+        '<!DOCTYPE html>',
+        '<html lang="fr">',
+        '<head>',
+        '    <meta charset="UTF-8">',
+        '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        f'    <title>Rapport de Test - {numero_serie}</title>',
+        '    <style>',
+        '        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; color: #333; }',
+        '        .container { max-width: 1200px; margin: 0 auto; }',
+        '        h1, h2, h3 { color: #0066cc; }',
+        '        h1 { border-bottom: 2px solid #0066cc; padding-bottom: 10px; }',
+        '        .summary { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 20px; }',
+        '        .resistances { background-color: #e6f7ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; }',
+        '        .defaut-category { background-color: #f5f5f5; margin: 20px 0; padding: 15px; border-left: 5px solid #0066cc; border-radius: 0 5px 5px 0; }',
+        '        .test-sequence { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }',
+        '        .passed { background-color: #e6ffe6; }',
+        '        .failed { background-color: #ffe6e6; }',
+        '        .terminated { background-color: #e6e6ff; }',
+        '        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 0.8em; margin-left: 5px; }',
+        '        .status-passed { background-color: #4CAF50; color: white; }',
+        '        .status-failed { background-color: #f44336; color: white; }',
+        '        .status-terminated { background-color: #2196F3; color: white; }',
+        '        .detail-box { background-color: #f9f9f9; padding: 10px; border-left: 3px solid #ccc; margin-top: 10px; white-space: pre-line; }',
+        '        .detail-section { margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 10px; }',
+        '        .configuration { font-weight: bold; color: #0066cc; }',
+        '        .measurements { margin-left: 20px; }',
+        '        .measurement-item { display: flex; justify-content: space-between; max-width: 500px; }',
+        '        .measurement-label { font-weight: bold; }',
+        '        .timeline { position: relative; margin: 20px 0; padding-left: 30px; }',
+        '        .timeline::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background-color: #ddd; }',
+        '        .timeline-item { position: relative; margin-bottom: 20px; }',
+        '        .timeline-item::before { content: ""; position: absolute; left: -30px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background-color: #0066cc; }',
+        '        .timeline-date { font-size: 0.9em; color: #666; margin-bottom: 5px; }',
+        '        .collapsible { cursor: pointer; padding: 10px; width: 100%; border: none; text-align: left; outline: none; font-size: 15px; background-color: #f1f1f1; margin-bottom: 5px; }',
+        '        .collapsible:after { content: "\\002B"; color: #777; font-weight: bold; float: right; margin-left: 5px; }',
+        '        .collapsible.active:after { content: "\\2212"; }',
+        '        .content { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; background-color: white; }',
+        '    </style>',
+        '</head>',
+        '<body>',
+        '    <div class="container">',
+        f'        <h1>Rapport de Test - Numéro de série: {numero_serie}</h1>',
+        '        <div class="summary">',
+        '            <h2>Résumé des Tests</h2>',
+        f'            <p><strong>Nombre de séquences analysées:</strong> {len(resultats_tests)}</p>',
+        f'            <p><strong>Types de défauts identifiés:</strong> {len(defauts_par_type)}</p>',
+        '        </div>'
+    ]
+    
+    # Ajouter les infos sur les résistances si disponibles
+    if infos_resistances:
+        html_content.extend([
+            '        <div class="resistances">',
+            '            <h2>Informations sur les Résistances (SEQ-01)</h2>',
+            '            <h3>Résistances calculées:</h3>',
+            '            <ul>'
+        ])
+        
+        if infos_resistances.get("R46_calculee"):
+            html_content.append(f'                <li><strong>R46:</strong> {infos_resistances["R46_calculee"]}</li>')
+        if infos_resistances.get("R47_calculee"):
+            html_content.append(f'                <li><strong>R47:</strong> {infos_resistances["R47_calculee"]}</li>')
+        if infos_resistances.get("R48_calculee"):
+            html_content.append(f'                <li><strong>R48:</strong> {infos_resistances["R48_calculee"]}</li>')
+        
+        html_content.extend([
+            '            </ul>',
+            '            <h3>Résistances à monter:</h3>',
+            '            <ul>'
+        ])
+        
+        if infos_resistances.get("R46_monter"):
+            marquage = f" (Marquage CMS: {infos_resistances['R46_marquage']})" if infos_resistances.get("R46_marquage") else ""
+            html_content.append(f'                <li><strong>R46:</strong> {infos_resistances["R46_monter"]}{marquage}</li>')
+        if infos_resistances.get("R47_monter"):
+            marquage = f" (Marquage CMS: {infos_resistances['R47_marquage']})" if infos_resistances.get("R47_marquage") else ""
+            html_content.append(f'                <li><strong>R47:</strong> {infos_resistances["R47_monter"]}{marquage}</li>')
+        if infos_resistances.get("R48_monter"):
+            marquage = f" (Marquage CMS: {infos_resistances['R48_marquage']})" if infos_resistances.get("R48_marquage") else ""
+            html_content.append(f'                <li><strong>R48:</strong> {infos_resistances["R48_monter"]}{marquage}</li>')
+        
+        html_content.extend([
+            '            </ul>',
+            '        </div>'
+        ])
+    
+    # Section pour chaque type de défaut
+    html_content.append('        <h2>Évolution des Défauts</h2>')
+    
+    for defaut_type, defauts in defauts_par_type.items():
+        html_content.extend([
+            f'        <button class="collapsible">{defaut_type} ({len(defauts)} occurrences)</button>',
+            '        <div class="content">',
+            f'            <div class="defaut-category">',
+            f'                <h3>{defaut_type}</h3>',
+            '                <div class="timeline">'
+        ])
+        
+        for defaut in defauts:
+            date_str = defaut["date_test"].strftime("%d/%m/%Y %H:%M:%S") if defaut["date_test"] != datetime.min else "Date inconnue"
+            status_class = "status-failed" if defaut["status"] == "Failed" else "status-terminated" if defaut["status"] == "Terminated" else ""
+            
+            html_content.extend([
+                '                    <div class="timeline-item">',
+                f'                        <div class="timeline-date">{date_str} - {defaut["nom_fichier"]}</div>',
+                '                        <div class="test-sequence">',
+                f'                            <h4>{defaut["nom_test"]} <span class="status-badge {status_class}">{defaut["status"]}</span></h4>',
+                '                            <div class="detail-box">',
+            ])
+            
+            # Formater les détails
+            details_lines = defaut["detail"].split("\n")
+            for line in details_lines:
+                if "Configuration:" in line:
+                    html_content.append(f'                                <div class="configuration">{line}</div>')
+                elif "Mesures:" in line:
+                    html_content.append('                                <div class="detail-section">Mesures:</div>')
+                elif line.strip().startswith("- Valeur"):
+                    parts = line.strip().split(":", 1)
+                    if len(parts) == 2:
+                        label, value = parts
+                        html_content.append(f'                                <div class="measurements"><div class="measurement-item"><span class="measurement-label">{label.strip()}:</span> <span>{value.strip()}</span></div></div>')
+                else:
+                    html_content.append(f'                                {line}')
+            
+            html_content.extend([
+                '                            </div>',
+                '                        </div>',
+                '                    </div>'
+            ])
+        
+        html_content.extend([
+            '                </div>',
+            '            </div>',
+            '        </div>'
+        ])
+    
+    # Ajouter le script JavaScript pour les éléments pliables (collapsible)
+    html_content.extend([
+        '    </div>',
+        '    <script>',
+        '        var coll = document.getElementsByClassName("collapsible");',
+        '        var i;',
+        '',
+        '        for (i = 0; i < coll.length; i++) {',
+        '            coll[i].addEventListener("click", function() {',
+        '                this.classList.toggle("active");',
+        '                var content = this.nextElementSibling;',
+        '                if (content.style.maxHeight){',
+        '                    content.style.maxHeight = null;',
+        '                } else {',
+        '                    content.style.maxHeight = content.scrollHeight + "px";',
+        '                } ',
+        '            });',
+        '        }',
+        '    </script>',
+        '</body>',
+        '</html>'
+    ])
+    
+    # Enregistrer le fichier HTML
+    nom_fichier_html = f"rapport_visuel_{numero_serie}.html"
+    chemin_fichier_html = os.path.join(chemin_repertoire, nom_fichier_html)
+    
+    with open(chemin_fichier_html, 'w', encoding='utf-8') as f:
+        f.write("\n".join(html_content))
+    
+    return chemin_fichier_html
+
 def traiter_repertoire_serie(chemin_repertoire):
     """
     Traite un répertoire de numéro de série et crée un rapport dans ce répertoire
@@ -312,14 +567,19 @@ def traiter_repertoire_serie(chemin_repertoire):
         print(f"Aucun fichier HTML trouvé pour le numéro de série {numero_serie}")
         return
     
-    # Générer le rapport pour ce numéro de série
+    # Générer le rapport pour ce numéro de série (texte)
     rapport_final = []
     rapport_final.append(f"Numéro de série : {numero_serie}")
     rapport_final.append("-" * 70)  # Séparateur
     
+    # Stocker les résultats de tous les tests pour le rapport HTML
+    resultats_tous_tests = []
+    
     for chemin_complet in chemins_html:
         try:
             resultats = analyser_fichier_html(chemin_complet)
+            resultats_tous_tests.append(resultats)  # Stocker pour le rapport HTML
+            
             statut = resultats["resultat_global"] or "Inconnu"
             rapport_final.append(f"{resultats['nom_fichier']} : {statut}")
             
@@ -366,19 +626,29 @@ def traiter_repertoire_serie(chemin_repertoire):
         except Exception as e:
             print(f"Erreur lors du traitement de {chemin_complet}: {e}")
     
-    # Créer le fichier de rapport dans le répertoire du numéro de série
+    # Générer le rapport texte
     nom_fichier_rapport = f"rapport_{numero_serie}.txt"
     chemin_fichier_rapport = os.path.join(chemin_repertoire, nom_fichier_rapport)
     
     try:
         with open(chemin_fichier_rapport, 'w', encoding='utf-8') as f:
             f.write('\n'.join(rapport_final))
-        print(f"Rapport créé: {chemin_fichier_rapport}")
+        print(f"Rapport texte créé: {chemin_fichier_rapport}")
     
-        # Ouvrir le rapport
+        # Ouvrir le rapport texte
         subprocess.Popen(['notepad.exe', chemin_fichier_rapport])
     except Exception as e:
-        print(f"Erreur lors de la création/ouverture du rapport: {e}")
+        print(f"Erreur lors de la création/ouverture du rapport texte: {e}")
+    
+    # Générer le rapport HTML amélioré
+    try:
+        chemin_html = generer_rapport_html(chemin_repertoire, resultats_tous_tests)
+        print(f"Rapport HTML créé: {chemin_html}")
+        
+        # Ouvrir le rapport HTML dans le navigateur par défaut
+        webbrowser.open(f'file://{os.path.abspath(chemin_html)}')
+    except Exception as e:
+        print(f"Erreur lors de la création/ouverture du rapport HTML: {e}")
 
 def main():
     # Configuration pour l'affichage des caractères accentués

@@ -1,0 +1,103 @@
+Numéro de série : 2082
+----------------------------------------------------------------------
+SEQ-01 [30 01 2025] [10 32 53] : Terminated
+  Informations sur les résistances:
+  Résistances à monter:
+
+  Tests en échec:
+    - Test des Relais statiques (Terminated)
+      * Module Time: 19.470449
+
+    - Lecture mesure +16V AG34461A (Failed)
+      * Data: 0
+      * Data: 16.20377540588
+      * Tension +16V mesurée: 16.20
+      * Fourchette min: 15.9
+      * Fourchette max: 16.3
+      * Module Time: 1.1641514
+      * Data: 0
+      * Data: -16.31292152405
+      * Tension -16V mesurée: -16.31
+      * Fourchette min: -16.3
+      * Fourchette max: -15.9
+      * Module Time: 0.8017705
+
+SEQ-01 [30 01 2025] [10 34 09] : Terminated
+  Informations sur les résistances:
+  Résistances à monter:
+
+  Tests en échec:
+    - Test des Relais statiques (Terminated)
+      * Module Time: 18.5835526
+
+    - Lecture mesure +16V AG34461A (Failed)
+      * Data: 0
+      * Data: 16.20449066162
+      * Tension +16V mesurée: 16.20
+      * Fourchette min: 15.9
+      * Fourchette max: 16.3
+      * Module Time: 1.2063497
+      * Data: 0
+      * Data: -16.31421089172
+      * Tension -16V mesurée: -16.31
+      * Fourchette min: -16.3
+      * Fourchette max: -15.9
+      * Module Time: 0.7811482
+
+SEQ-01 [30 01 2025] [14 54 19] : Terminated
+  Informations sur les résistances:
+  Résistances à monter:
+
+  Tests en échec:
+    - Test des Relais statiques (Terminated)
+      * Module Time: 16.1170787
+
+    - Lecture mesure +16V AG34461A (Failed)
+      * Data: 0
+      * Data: 16.20581245422
+      * Tension +16V mesurée: 16.21
+      * Fourchette min: 15.9
+      * Fourchette max: 16.3
+      * Module Time: 1.1595452
+      * Data: 0
+      * Data: -16.31574249268
+      * Tension -16V mesurée: -16.32
+      * Fourchette min: -16.3
+      * Fourchette max: -15.9
+      * Module Time: 0.7371536
+
+SEQ-01 [04 02 2025] [15 13 48] : Passed
+  Informations sur les résistances:
+    - Résistance R46 calculée: 526.344
+    - Résistance R47 calculée: 548.817
+    - Résistance R48 calculée: 738.467
+  Résistances à monter:
+    - R46: Résistance à monter = 475 ohms. (Marquage CMS: 66A)
+    - R47: Résistance à monter = 475 ohms. (Marquage CMS: 66A)
+    - R48: Résistance à monter = 681 ohms. (Marquage CMS: 81A)
+
+SEQ-02 [10 03 2025] [15 25 47] : Terminated
+  Tests en échec:
+    - Test 1.9Un sur 2 voies en 19VDC (Terminated)
+      * Module Time: 38.6320825
+
+    - Lecture mesure -16V AG34461A (Failed)
+      * Data: 0
+      * Data: -16.63450241089
+      * Mesure -16V en V: -16.63
+      * Fourchette max en V: -16.6
+      * Fourchette min en V: -15
+      * Module Time: 0.7414967
+
+SEQ-02 [10 03 2025] [15 51 32] : Terminated
+  Tests en échec:
+    - Test 1.9Un sur 2 voies en 19VDC (Terminated)
+      * Module Time: 78.0895976
+
+    - Lecture mesure -16V AG34461A (Failed)
+      * Data: 0
+      * Data: -16.63222885132
+      * Mesure -16V en V: -16.63
+      * Fourchette max en V: -16.6
+      * Fourchette min en V: -15
+      * Module Time: 0.8124226
