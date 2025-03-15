@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from bs4 import BeautifulSoup
 import sys
+import re
 
 def formater_nom_fichier(nom_fichier):
     """
@@ -30,17 +31,54 @@ def formater_nom_fichier(nom_fichier):
     # Si le format n'est pas celui attendu, retourner le nom original
     return nom_fichier
 
+def extraire_sequence_du_nom(nom_fichier):
+    """
+    Extrait le numéro de séquence du nom du fichier (SEQ-01, SEQ-02, etc.)
+    """
+    parties = nom_fichier.split('_')
+    if parties and len(parties) > 0:
+        return parties[0]
+    return ""
+
+def obtenir_marquage_cms(valeur_resistance):
+    """
+    Retourne le marquage CMS correspondant à la valeur de résistance
+    """
+    # Tableau de correspondance entre les valeurs de résistance et les marquages CMS
+    correspondance = {
+        "221": "34A",
+        "332": "3320",
+        "475": "66A",
+        "681": "81A",
+        "1000": "01B"
+    }
+    
+    # Extraire la valeur numérique de la chaîne (par exemple: "Résistance à monter = 475 ohms." -> "475")
+    match = re.search(r'(\d+)\s*ohms', valeur_resistance, re.IGNORECASE)
+    if match:
+        valeur = match.group(1)
+        if valeur in correspondance:
+            return correspondance[valeur]
+    
+    return None  # Aucune correspondance trouvée
+
 def analyser_fichier_html(chemin_fichier):
     """
     Analyse un rapport HTML et renvoie un dictionnaire contenant :
       - nom_fichier : le nom du fichier
       - resultat_global : le statut global (Passed, Failed, Terminated, etc.)
       - tests_echec : une liste de tests en échec (chacun étant un dict avec nom_test, detail, status)
+      - resistances : informations sur les résistances (pour SEQ-01)
     """
+    nom_fichier_base = os.path.basename(chemin_fichier)
+    sequence = extraire_sequence_du_nom(nom_fichier_base)
+    
     donnees = {
-        "nom_fichier": formater_nom_fichier(os.path.basename(chemin_fichier)),
+        "nom_fichier": formater_nom_fichier(nom_fichier_base),
         "resultat_global": None,
-        "tests_echec": []
+        "tests_echec": [],
+        "sequence": sequence,
+        "resistances": {}
     }
 
     try:
@@ -63,7 +101,65 @@ def analyser_fichier_html(chemin_fichier):
             if balise_sn_value:
                 donnees["numero_serie"] = balise_sn_value.text.strip()
         
-        # 3) Récupérer les tests en échec (statuts = Failed ou Terminated)
+        # 3) Si c'est SEQ-01, récupérer les informations sur les résistances
+        if sequence == "SEQ-01":
+            resistances_infos = {
+                "R46_calculee": None,
+                "R47_calculee": None,
+                "R48_calculee": None,
+                "R46_monter": None,
+                "R47_monter": None,
+                "R48_monter": None,
+                # Ajout des marquages CMS
+                "R46_marquage": None,
+                "R47_marquage": None,
+                "R48_marquage": None
+            }
+            
+            # Chercher les labels contenant des informations sur les résistances
+            for label in soup.find_all("td", class_="label"):
+                label_text = label.get_text(strip=True)
+                
+                if "Résistance R46 calculée" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        resistances_infos["R46_calculee"] = value.get_text(strip=True)
+                
+                elif "Résistance R47 calculée" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        resistances_infos["R47_calculee"] = value.get_text(strip=True)
+                
+                elif "Résistance R48 calculée" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        resistances_infos["R48_calculee"] = value.get_text(strip=True)
+                
+                elif "Résistance R46 à monter" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        valeur_texte = value.get_text(strip=True)
+                        resistances_infos["R46_monter"] = valeur_texte
+                        resistances_infos["R46_marquage"] = obtenir_marquage_cms(valeur_texte)
+                
+                elif "Résistance R47 à monter" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        valeur_texte = value.get_text(strip=True)
+                        resistances_infos["R47_monter"] = valeur_texte
+                        resistances_infos["R47_marquage"] = obtenir_marquage_cms(valeur_texte)
+                
+                elif "Résistance R48 à monter" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        valeur_texte = value.get_text(strip=True)
+                        resistances_infos["R48_monter"] = valeur_texte
+                        resistances_infos["R48_marquage"] = obtenir_marquage_cms(valeur_texte)
+            
+            # Ajouter les informations récupérées
+            donnees["resistances"] = resistances_infos
+        
+        # 4) Récupérer les tests en échec (statuts = Failed ou Terminated)
         statuts_echec = {"Failed", "Terminated"}
         
         # Recherche directe des cellules avec statut Failed ou Terminated
@@ -84,46 +180,87 @@ def analyser_fichier_html(chemin_fichier):
             
             # Collecter tous les détails du test
             details = []
+            roue_codeuse_info = {}
+            valeurs_info = {}
+            autres_details = []
             
             # 1. Récupérer tous les labels et leurs valeurs associées dans cette table
             for label in table.find_all("td", class_="label"):
-                if "Status:" not in label.get_text(strip=True):  # Éviter de répéter le statut
-                    value = label.find_next_sibling("td", class_="value")
-                    if value:
-                        label_text = label.get_text(strip=True)
-                        value_text = value.get_text(strip=True)
-                        if value_text:  # Ne pas ajouter les champs vides
-                            details.append(f"{label_text} {value_text}")
-            
-            # 2. Chercher spécifiquement les informations ROUE CODEUSE et Valeur
-            roue_codeuse = None
-            valeur_mesure = None
-            
-            for label in table.find_all("td", class_="label"):
                 label_text = label.get_text(strip=True)
-                if "ROUE CODEUSE" in label_text:
-                    value = label.find_next_sibling("td", class_="value")
-                    if value:
-                        roue_codeuse = f"{label_text} {value.get_text(strip=True)}"
-                        if roue_codeuse not in details:
-                            details.append(roue_codeuse)
                 
-                elif "Valeur" in label_text:
-                    value = label.find_next_sibling("td", class_="value")
-                    if value:
-                        valeur_mesure = f"{label_text} {value.get_text(strip=True)}"
-                        if valeur_mesure not in details:
-                            details.append(valeur_mesure)
+                if "Status:" in label_text:
+                    continue  # Éviter de répéter le statut
+                
+                value = label.find_next_sibling("td", class_="value")
+                if not value:
+                    continue
+                    
+                value_text = value.get_text(strip=True)
+                if not value_text:
+                    continue  # Ne pas ajouter les champs vides
+                
+                # Traiter différemment selon le type d'information
+                if "ROUE CODEUSE" in label_text:
+                    # Extraire les informations de la roue codeuse
+                    import re
+                    rc_match = re.search(r"ROUE CODEUSE = ([^ \.]+) \.\. GAMME = ([^ \.]+) \.\. Voie ([^ \.]+)", label_text)
+                    if rc_match:
+                        roue = rc_match.group(1)
+                        gamme = rc_match.group(2)
+                        voie = rc_match.group(3)
+                        roue_codeuse_info = {
+                            "roue": roue,
+                            "gamme": gamme,
+                            "voie": voie
+                        }
+                    else:
+                        autres_details.append(f"{label_text} {value_text}")
+                
+                elif "Valeur" in label_text and "injectée" in label_text:
+                    # Extraire les valeurs mesurées
+                    valeurs_texte = value_text.strip()
+                    parties = valeurs_texte.split('/')
+                    if len(parties) >= 4:
+                        valeurs_info = {
+                            "injectée": parties[0].strip(),
+                            "attendue": parties[1].strip(),
+                            "mesurée": parties[2].strip(),
+                            "précision": parties[3].strip()
+                        }
+                    else:
+                        autres_details.append(f"{label_text} {value_text}")
+                
+                else:
+                    # Autres types d'informations
+                    autres_details.append(f"{label_text} {value_text}")
             
             # 3. Chercher les messages d'erreur spécifiques
             error_label = table.find("td", class_="label", string=lambda t: t and "Error Info:" in t)
             if error_label:
                 error_value = error_label.find_next_sibling("td", class_="value")
-                if error_value:
-                    details.append(f"Erreur: {error_value.get_text(strip=True)}")
+                if error_value and error_value.get_text(strip=True):
+                    autres_details.append(f"Erreur: {error_value.get_text(strip=True)}")
+            
+            # Construire la chaîne de détails avec un format amélioré
+            formatted_details = []
+            
+            # 1. Ajouter en premier les infos générales
+            formatted_details.extend(autres_details)
+            
+            # 2. Ajouter les infos de roue codeuse avec un format amélioré
+            if roue_codeuse_info:
+                formatted_details.append(f"Configuration: ROUE CODEUSE={roue_codeuse_info.get('roue', '?')} | GAMME={roue_codeuse_info.get('gamme', '?')} | Voie={roue_codeuse_info.get('voie', '?')}")
+            
+            # 3. Ajouter les valeurs mesurées avec un format amélioré
+            if valeurs_info:
+                formatted_details.append("Mesures:")
+                formatted_details.append(f"  - Valeur injectée : {valeurs_info.get('injectée', '?')}")
+                formatted_details.append(f"  - Valeur attendue : {valeurs_info.get('attendue', '?')}")
+                formatted_details.append(f"  - Valeur mesurée  : {valeurs_info.get('mesurée', '?')}")
+                formatted_details.append(f"  - Précision       : {valeurs_info.get('précision', '?')}")
             
             # Construire la chaîne de détails finale
-            detail_text = "\n".join(details) if details else "Pas de détail disponible"
+            detail_text = "\n".join(formatted_details) if formatted_details else "Pas de détail disponible"
             
             # Si le test n'est pas déjà dans la liste, l'ajouter
             test_existant = False
@@ -185,6 +322,31 @@ def traiter_repertoire_serie(chemin_repertoire):
             resultats = analyser_fichier_html(chemin_complet)
             statut = resultats["resultat_global"] or "Inconnu"
             rapport_final.append(f"{resultats['nom_fichier']} : {statut}")
+            
+            # Si c'est une séquence SEQ-01 et qu'il y a des informations sur les résistances
+            if resultats["sequence"] == "SEQ-01" and resultats["resistances"]:
+                resistances = resultats["resistances"]
+                rapport_final.append("  Informations sur les résistances:")
+                
+                if resistances.get("R46_calculee"):
+                    rapport_final.append(f"    - Résistance R46 calculée: {resistances['R46_calculee']}")
+                if resistances.get("R47_calculee"):
+                    rapport_final.append(f"    - Résistance R47 calculée: {resistances['R47_calculee']}")
+                if resistances.get("R48_calculee"):
+                    rapport_final.append(f"    - Résistance R48 calculée: {resistances['R48_calculee']}")
+                    
+                rapport_final.append("  Résistances à monter:")
+                if resistances.get("R46_monter"):
+                    marquage = f" (Marquage CMS: {resistances['R46_marquage']})" if resistances.get("R46_marquage") else ""
+                    rapport_final.append(f"    - R46: {resistances['R46_monter']}{marquage}")
+                if resistances.get("R47_monter"):
+                    marquage = f" (Marquage CMS: {resistances['R47_marquage']})" if resistances.get("R47_marquage") else ""
+                    rapport_final.append(f"    - R47: {resistances['R47_monter']}{marquage}")
+                if resistances.get("R48_monter"):
+                    marquage = f" (Marquage CMS: {resistances['R48_marquage']})" if resistances.get("R48_marquage") else ""
+                    rapport_final.append(f"    - R48: {resistances['R48_monter']}{marquage}")
+                    
+                rapport_final.append("")  # Ligne vide pour séparer
             
             # Ajouter les détails des tests en échec avec formatage amélioré
             if resultats["tests_echec"]:

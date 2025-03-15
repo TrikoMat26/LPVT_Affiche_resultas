@@ -1,0 +1,32 @@
+Numéro de série : 2087
+----------------------------------------------------------------------
+SEQ-01 [29 01 2025] [14 38 28] : Passed
+SEQ-02 [11 03 2025] [09 10 10] : Terminated
+  Tests en échec:
+    - Lecture du serial number de la carte en test (Terminated)
+      * Measurement: 0
+      * Numéro de série de la carte en test: MIQ2025/11-2087
+      * Module Time: 0.0003237
+      * Version de la séquence: 137
+      * Module Time: 274.0542066
+
+    - Vérification de la précision du rapport de transfert (Failed)
+      * ROUE CODEUSE = 3 .. GAMME = 13 .. Voie U: ''
+      * Valeur réelle injectée   /   Valeur sortie attendue   /   Valeur sortie mesurée   /   Précision (en %): 1.5606   /   69.2558   /   69.2098   /   -0.0664
+      * ROUE CODEUSE = 3 .. GAMME = 13 .. Voie V: ''
+      * Valeur réelle injectée   /   Valeur sortie attendue   /   Valeur sortie mesurée   /   Précision (en %): 1.5700   /   69.6766   /   69.5135   /   -0.2340
+
+SEQ-02 [11 03 2025] [09 15 26] : Terminated
+  Tests en échec:
+    - Lecture du serial number de la carte en test (Terminated)
+      * Measurement: 0
+      * Numéro de série de la carte en test: MIQ2025/11-2087
+      * Module Time: 0.000318
+      * Version de la séquence: 137
+      * Module Time: 329.2498252
+
+    - Vérification de la précision du rapport de transfert (Failed)
+      * ROUE CODEUSE = 3 .. GAMME = 13 .. Voie U: ''
+      * Valeur réelle injectée   /   Valeur sortie attendue   /   Valeur sortie mesurée   /   Précision (en %): 1.5606   /   69.2600   /   69.2141   /   -0.0663
+      * ROUE CODEUSE = 3 .. GAMME = 13 .. Voie V: ''
+      * Valeur réelle injectée   /   Valeur sortie attendue   /   Valeur sortie mesurée   /   Précision (en %): 1.5701   /   69.6796   /   69.5153   /   -0.2358
