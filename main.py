@@ -66,61 +66,79 @@ def analyser_fichier_html(chemin_fichier):
         # 3) Récupérer les tests en échec (statuts = Failed ou Terminated)
         statuts_echec = {"Failed", "Terminated"}
         
-        # Chercher tous les tables de résultats
-        for table in soup.find_all("table", style=True):
-            # Récupérer le titre du test s'il existe (dans un colspan="2")
-            nom_test = "Test inconnu"
-            titre_cell = table.find("td", colspan="2")
-            if titre_cell:
-                nom_test = titre_cell.get_text(strip=True)
+        # Recherche directe des cellules avec statut Failed ou Terminated
+        for status_cell in soup.find_all("td", class_="value", string=lambda t: t and t.strip() in statuts_echec):
+            status_text = status_cell.text.strip()
             
-            # Chercher le statut dans cette table
-            status_label = table.find("td", class_="label", string=lambda t: t and "Status:" in t)
-            if status_label:
-                status_value = status_label.find_next_sibling("td", class_="value")
-                if status_value and status_value.get_text(strip=True) in statuts_echec:
-                    # On a trouvé un test en échec, récupérer tous les détails
-                    status_text = status_value.get_text(strip=True)
+            # Trouver la table parente qui contient ce statut
+            table = status_cell.find_parent("table")
+            if not table:
+                continue
+                
+            # Récupérer le titre du test (dans un colspan="2")
+            titre_cell = table.find("td", colspan="2")
+            if not titre_cell:
+                continue
+                
+            nom_test = titre_cell.get_text(strip=True)
+            
+            # Collecter tous les détails du test
+            details = []
+            
+            # 1. Récupérer tous les labels et leurs valeurs associées dans cette table
+            for label in table.find_all("td", class_="label"):
+                if "Status:" not in label.get_text(strip=True):  # Éviter de répéter le statut
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        label_text = label.get_text(strip=True)
+                        value_text = value.get_text(strip=True)
+                        if value_text:  # Ne pas ajouter les champs vides
+                            details.append(f"{label_text} {value_text}")
+            
+            # 2. Chercher spécifiquement les informations ROUE CODEUSE et Valeur
+            roue_codeuse = None
+            valeur_mesure = None
+            
+            for label in table.find_all("td", class_="label"):
+                label_text = label.get_text(strip=True)
+                if "ROUE CODEUSE" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        roue_codeuse = f"{label_text} {value.get_text(strip=True)}"
+                        if roue_codeuse not in details:
+                            details.append(roue_codeuse)
+                
+                elif "Valeur" in label_text:
+                    value = label.find_next_sibling("td", class_="value")
+                    if value:
+                        valeur_mesure = f"{label_text} {value.get_text(strip=True)}"
+                        if valeur_mesure not in details:
+                            details.append(valeur_mesure)
+            
+            # 3. Chercher les messages d'erreur spécifiques
+            error_label = table.find("td", class_="label", string=lambda t: t and "Error Info:" in t)
+            if error_label:
+                error_value = error_label.find_next_sibling("td", class_="value")
+                if error_value:
+                    details.append(f"Erreur: {error_value.get_text(strip=True)}")
+            
+            # Construire la chaîne de détails finale
+            detail_text = "\n".join(details) if details else "Pas de détail disponible"
+            
+            # Si le test n'est pas déjà dans la liste, l'ajouter
+            test_existant = False
+            for test in donnees["tests_echec"]:
+                if test["nom_test"] == nom_test and test["status"] == status_text:
+                    test_existant = True
+                    break
                     
-                    # Collecter tous les détails du test
-                    details = []
-                    
-                    # 1. Récupérer tous les labels et leurs valeurs associées dans cette table
-                    for label in table.find_all("td", class_="label"):
-                        if "Status:" not in label.get_text(strip=True):  # Éviter de répéter le statut
-                            value = label.find_next_sibling("td", class_="value")
-                            if value:
-                                label_text = label.get_text(strip=True)
-                                value_text = value.get_text(strip=True)
-                                if value_text:  # Ne pas ajouter les champs vides
-                                    details.append(f"{label_text} {value_text}")
-                    
-                    # 2. Récupérer spécifiquement les informations de mesure (comme observé dans le HTML)
-                    # Rechercher des patterns comme "Valeur réelle injectée / Valeur sortie attendue..."
-                    for label in table.find_all("td", class_="label"):
-                        if "Valeur" in label.get_text(strip=True) or "ROUE CODEUSE" in label.get_text(strip=True):
-                            value = label.find_next_sibling("td", class_="value")
-                            if value:
-                                label_text = label.get_text(strip=True)
-                                value_text = value.get_text(strip=True)
-                                details.append(f"{label_text} {value_text}")
-                    
-                    # 3. Chercher les messages d'erreur spécifiques
-                    error_label = table.find("td", class_="label", string=lambda t: t and "Error Info:" in t)
-                    if error_label:
-                        error_value = error_label.find_next_sibling("td", class_="value")
-                        if error_value:
-                            details.append(f"Erreur: {error_value.get_text(strip=True)}")
-                    
-                    # Construire la chaîne de détails finale
-                    detail_text = "\n".join(details) if details else "Pas de détail disponible"
-                    
-                    # Ajouter ce test en échec à la liste
-                    donnees["tests_echec"].append({
-                        "nom_test": nom_test,
-                        "status": status_text,
-                        "detail": detail_text
-                    })
+            if not test_existant:
+                donnees["tests_echec"].append({
+                    "nom_test": nom_test,
+                    "status": status_text,
+                    "detail": detail_text
+                })
+                
     except Exception as e:
         print(f"Erreur lors de l'analyse du fichier {chemin_fichier}: {e}")
     
