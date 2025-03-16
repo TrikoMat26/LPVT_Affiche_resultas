@@ -5,7 +5,7 @@ from tkinter import filedialog
 from bs4 import BeautifulSoup
 import sys
 import re
-from typing import Tuple, Dict, List, Optional, Any
+from typing import Tuple, Dict, List, Optional, Any, Set
 
 def formater_nom_fichier(nom_fichier: str) -> Tuple[str, str]:
     """
@@ -53,7 +53,19 @@ def obtenir_marquage_cms(valeur_resistance: str) -> Optional[str]:
         valeur = match.group(1)
         return correspondance.get(valeur)
     
-    return None  # Aucune correspondance trouvée
+    return None
+
+def lire_valeur_html(element: BeautifulSoup, classe: str, texte_recherche: str) -> Optional[str]:
+    """
+    Lit une valeur à partir d'un élément HTML en recherchant un texte spécifique.
+    Retourne la valeur si trouvée, sinon None.
+    """
+    element_trouve = element.find("td", class_=classe, string=lambda t: t and texte_recherche in t)
+    if element_trouve:
+        element_valeur = element_trouve.find_next_sibling("td", class_=f"{classe}_value")
+        if element_valeur:
+            return element_valeur.text.strip()
+    return None
 
 def extraire_informations_resistances(soup: BeautifulSoup) -> Dict[str, Any]:
     """
@@ -71,45 +83,39 @@ def extraire_informations_resistances(soup: BeautifulSoup) -> Dict[str, Any]:
         "R48_marquage": None
     }
     
+    # Pattern de recherche pour les résistances
+    patterns = {
+        "calculee": {
+            "R46": "Résistance R46 calculée",
+            "R47": "Résistance R47 calculée",
+            "R48": "Résistance R48 calculée"
+        },
+        "monter": {
+            "R46": "Résistance R46 à monter",
+            "R47": "Résistance R47 à monter",
+            "R48": "Résistance R48 à monter"
+        }
+    }
+    
     # Chercher les labels contenant des informations sur les résistances
     for label in soup.find_all("td", class_="label"):
         label_text = label.get_text(strip=True)
         
-        if "Résistance R46 calculée" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                resistances_infos["R46_calculee"] = value.get_text(strip=True)
+        # Traiter les résistances calculées
+        for r_name, pattern in patterns["calculee"].items():
+            if pattern in label_text:
+                value = label.find_next_sibling("td", class_="value")
+                if value:
+                    resistances_infos[f"{r_name}_calculee"] = value.get_text(strip=True)
         
-        elif "Résistance R47 calculée" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                resistances_infos["R47_calculee"] = value.get_text(strip=True)
-        
-        elif "Résistance R48 calculée" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                resistances_infos["R48_calculee"] = value.get_text(strip=True)
-        
-        elif "Résistance R46 à monter" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                valeur_texte = value.get_text(strip=True)
-                resistances_infos["R46_monter"] = valeur_texte
-                resistances_infos["R46_marquage"] = obtenir_marquage_cms(valeur_texte)
-        
-        elif "Résistance R47 à monter" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                valeur_texte = value.get_text(strip=True)
-                resistances_infos["R47_monter"] = valeur_texte
-                resistances_infos["R47_marquage"] = obtenir_marquage_cms(valeur_texte)
-        
-        elif "Résistance R48 à monter" in label_text:
-            value = label.find_next_sibling("td", class_="value")
-            if value:
-                valeur_texte = value.get_text(strip=True)
-                resistances_infos["R48_monter"] = valeur_texte
-                resistances_infos["R48_marquage"] = obtenir_marquage_cms(valeur_texte)
+        # Traiter les résistances à monter
+        for r_name, pattern in patterns["monter"].items():
+            if pattern in label_text:
+                value = label.find_next_sibling("td", class_="value")
+                if value:
+                    valeur_texte = value.get_text(strip=True)
+                    resistances_infos[f"{r_name}_monter"] = valeur_texte
+                    resistances_infos[f"{r_name}_marquage"] = obtenir_marquage_cms(valeur_texte)
     
     return resistances_infos
 
@@ -216,7 +222,8 @@ def analyser_fichier_html(chemin_fichier: str) -> Dict[str, Any]:
         "resultat_global": None,
         "tests_echec": [],
         "sequence": sequence,
-        "resistances": {}
+        "resistances": {},
+        "numero_serie": None
     }
 
     try:
@@ -244,7 +251,7 @@ def analyser_fichier_html(chemin_fichier: str) -> Dict[str, Any]:
             donnees["resistances"] = extraire_informations_resistances(soup)
         
         # 4) Récupérer les tests en échec (statuts = Failed ou Terminated)
-        statuts_echec = {"Failed", "Terminated"}
+        statuts_echec: Set[str] = {"Failed", "Terminated"}
         
         # Recherche directe des cellules avec statut Failed ou Terminated
         for status_cell in soup.find_all("td", class_="value", string=lambda t: t and t.strip() in statuts_echec):
@@ -294,6 +301,40 @@ def trouver_fichiers_html(repertoire: str) -> List[str]:
         print(f"Erreur lors de la recherche de fichiers dans {repertoire}: {e}")
         return []
 
+def formater_section_resistances(resistances: Dict[str, Any], rapport_final: List[str]) -> None:
+    """
+    Formate et ajoute la section des résistances au rapport
+    """
+    rapport_final.append("  Informations sur les résistances:")
+    
+    for r_num in ["R46", "R47", "R48"]:
+        if resistances.get(f"{r_num}_calculee"):
+            rapport_final.append(f"    - Résistance {r_num} calculée: {resistances[f'{r_num}_calculee']}")
+            
+    rapport_final.append("  Résistances à monter:")
+    for r_num in ["R46", "R47", "R48"]:
+        if resistances.get(f"{r_num}_monter"):
+            marquage = f" (Marquage CMS: {resistances[f'{r_num}_marquage']})" if resistances.get(f"{r_num}_marquage") else ""
+            rapport_final.append(f"    - {r_num}: {resistances[f'{r_num}_monter']}{marquage}")
+            
+    rapport_final.append("")  # Ligne vide pour séparer
+
+def formater_section_tests_echec(tests_echec: List[Dict[str, Any]], rapport_final: List[str]) -> None:
+    """
+    Formate et ajoute la section des tests en échec au rapport
+    """
+    rapport_final.append("  Tests en échec:")
+    for test in tests_echec:
+        rapport_final.append(f"    - {test['nom_test']} ({test['status']})")
+        
+        # Formater les détails avec une indentation propre
+        for ligne in test['detail'].split('\n'):
+            if ligne.strip():  # Ne pas ajouter les lignes vides
+                rapport_final.append(f"      * {ligne}")
+        
+        # Ajouter une ligne vide entre les tests
+        rapport_final.append("")
+
 def generer_contenu_rapport(resultats: Dict[str, Any], rapport_final: List[str]) -> None:
     """
     Génère le contenu du rapport pour un fichier analysé
@@ -304,34 +345,11 @@ def generer_contenu_rapport(resultats: Dict[str, Any], rapport_final: List[str])
     
     # Si c'est une séquence SEQ-01 et qu'il y a des informations sur les résistances
     if resultats["sequence"] == "SEQ-01" and resultats["resistances"]:
-        resistances = resultats["resistances"]
-        rapport_final.append("  Informations sur les résistances:")
-        
-        for r_num in ["R46", "R47", "R48"]:
-            if resistances.get(f"{r_num}_calculee"):
-                rapport_final.append(f"    - Résistance {r_num} calculée: {resistances[f'{r_num}_calculee']}")
-                
-        rapport_final.append("  Résistances à monter:")
-        for r_num in ["R46", "R47", "R48"]:
-            if resistances.get(f"{r_num}_monter"):
-                marquage = f" (Marquage CMS: {resistances[f'{r_num}_marquage']})" if resistances.get(f"{r_num}_marquage") else ""
-                rapport_final.append(f"    - {r_num}: {resistances[f'{r_num}_monter']}{marquage}")
-                
-        rapport_final.append("")  # Ligne vide pour séparer
+        formater_section_resistances(resultats["resistances"], rapport_final)
     
     # Ajouter les détails des tests en échec avec formatage amélioré
     if resultats["tests_echec"]:
-        rapport_final.append("  Tests en échec:")
-        for test in resultats["tests_echec"]:
-            rapport_final.append(f"    - {test['nom_test']} ({test['status']})")
-            
-            # Formater les détails avec une indentation propre
-            for ligne in test['detail'].split('\n'):
-                if ligne.strip():  # Ne pas ajouter les lignes vides
-                    rapport_final.append(f"      * {ligne}")
-            
-            # Ajouter une ligne vide entre les tests
-            rapport_final.append("")
+        formater_section_tests_echec(resultats["tests_echec"], rapport_final)
 
 def traiter_repertoire_serie(chemin_repertoire: str) -> None:
     """
