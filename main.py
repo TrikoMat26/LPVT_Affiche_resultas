@@ -351,9 +351,36 @@ def generer_contenu_rapport(resultats: Dict[str, Any], rapport_final: List[str])
     if resultats["tests_echec"]:
         formater_section_tests_echec(resultats["tests_echec"], rapport_final)
 
+def extraire_date_heure(nom_formaté: str) -> tuple:
+    """
+    Extrait la date et l'heure d'un nom de fichier formaté pour le tri chronologique
+    Format attendu: "SEQ-XX [JJ MM AAAA] [HH MM SS]"
+    Retourne un tuple permettant le tri chronologique: (AAAA, MM, JJ, HH, MM, SS)
+    """
+    try:
+        # Extraire la partie date [JJ MM AAAA]
+        match_date = re.search(r'\[(\d+) (\d+) (\d+)\]', nom_formaté)
+        if not match_date:
+            return (0, 0, 0, 0, 0, 0)  # Valeur par défaut si le format ne correspond pas
+            
+        jour, mois, annee = map(int, match_date.groups())
+        
+        # Extraire la partie heure [HH MM SS]
+        match_heure = re.search(r'\[(\d+) (\d+) (\d+)\](?!.*\[\d+ \d+ \d+\])', nom_formaté)
+        if not match_heure:
+            return (annee, mois, jour, 0, 0, 0)
+            
+        heure, minute, seconde = map(int, match_heure.groups())
+        
+        return (annee, mois, jour, heure, minute, seconde)
+    except:
+        # En cas d'erreur, renvoyer une valeur qui sera en fin de tri
+        return (0, 0, 0, 0, 0, 0)
+
 def traiter_repertoire_serie(chemin_repertoire: str) -> None:
     """
     Traite un répertoire de numéro de série et crée un rapport dans ce répertoire
+    Les séquences sont triées par ordre chronologique dans le rapport
     """
     numero_serie = os.path.basename(chemin_repertoire)
     print(f"Traitement du numéro de série: {numero_serie}")
@@ -365,18 +392,28 @@ def traiter_repertoire_serie(chemin_repertoire: str) -> None:
         print(f"Aucun fichier HTML trouvé pour le numéro de série {numero_serie}")
         return
     
+    # Collecter tous les résultats pour pouvoir les trier
+    resultats_analyses = []
+    
+    for chemin_complet in chemins_html:
+        try:
+            resultats = analyser_fichier_html(chemin_complet)
+            resultats_analyses.append(resultats)
+        except Exception as e:
+            print(f"Erreur lors de l'analyse de {chemin_complet}: {e}")
+    
+    # Trier les résultats par ordre chronologique (date et heure)
+    resultats_analyses.sort(key=lambda x: extraire_date_heure(x['nom_fichier']))
+    
     # Générer le rapport pour ce numéro de série
     rapport_final = [
         f"Numéro de série : {numero_serie}",
         "-" * 70  # Séparateur
     ]
     
-    for chemin_complet in chemins_html:
-        try:
-            resultats = analyser_fichier_html(chemin_complet)
-            generer_contenu_rapport(resultats, rapport_final)
-        except Exception as e:
-            print(f"Erreur lors du traitement de {chemin_complet}: {e}")
+    # Générer le contenu du rapport dans l'ordre chronologique
+    for resultats in resultats_analyses:
+        generer_contenu_rapport(resultats, rapport_final)
     
     # Créer le fichier de rapport dans le répertoire du numéro de série
     nom_fichier_rapport = f"rapport_{numero_serie}.txt"
