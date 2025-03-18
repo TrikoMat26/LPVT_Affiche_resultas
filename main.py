@@ -1,7 +1,7 @@
 import os
 import subprocess
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, Label, Toplevel
 from bs4 import BeautifulSoup
 import sys
 import re
@@ -377,7 +377,105 @@ def extraire_date_heure(nom_formaté: str) -> tuple:
         # En cas d'erreur, renvoyer une valeur qui sera en fin de tri
         return (0, 0, 0, 0, 0, 0)
 
-def traiter_repertoire_serie(chemin_repertoire: str) -> None:
+class ProgressWindow:
+    """
+    Fenêtre non modale pour afficher la progression du traitement
+    """
+    def __init__(self, total_files: int):
+        """Initialise la fenêtre de progression avec le nombre total de fichiers"""
+        self.total_files = total_files
+        self.processed_files = 0
+        
+        # Créer une fenêtre Toplevel
+        self.window = Toplevel()
+        self.window.title("Traitement en cours")
+        
+        # Définir les dimensions et la position
+        window_width = 300
+        window_height = 100
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+        x_position = (screen_width - window_width) // 2
+        y_position = (screen_height - window_height) // 2
+        self.window.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
+        
+        # Empêcher le redimensionnement
+        self.window.resizable(False, False)
+        
+        # S'assurer que la fenêtre reste au-dessus des autres
+        self.window.attributes("-topmost", True)
+        
+        # Créer un frame pour organiser les widgets
+        self.frame = tk.Frame(self.window)
+        self.frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Label pour afficher l'information
+        self.info_label = Label(
+            self.frame, 
+            text=f"Traitement en cours...\n\nFichiers restants: {self.total_files - self.processed_files} / {self.total_files}",
+            font=("Arial", 10),
+            justify="center"
+        )
+        self.info_label.pack(expand=True)
+        
+        # Mettre à jour l'interface
+        self.window.update()
+    
+    def update_progress(self) -> None:
+        """Met à jour la progression après le traitement d'un fichier"""
+        self.processed_files += 1
+        remaining = self.total_files - self.processed_files
+        
+        # Mettre à jour le texte
+        self.info_label.config(
+            text=f"Traitement en cours...\n\nFichiers restants: {remaining} / {self.total_files}"
+        )
+        
+        # Forcer la mise à jour de l'interface
+        self.window.update()
+    
+    def close(self) -> None:
+        """Ferme la fenêtre de progression"""
+        self.window.destroy()
+    
+    def show_completion(self) -> None:
+        """Affiche un message de fin de traitement avec un bouton pour fermer"""
+        # Supprimer le label existant
+        self.info_label.pack_forget()
+        
+        # Créer un nouveau label avec le message de fin
+        self.info_label = Label(
+            self.frame, 
+            text=f"Traitement terminé !\n\n{self.processed_files} fichiers ont été traités.",
+            font=("Arial", 10, "bold"),
+            fg="green",
+            justify="center"
+        )
+        self.info_label.pack(expand=True, pady=(10, 20))
+        
+        # Ajouter un bouton "Fermer"
+        self.close_button = tk.Button(
+            self.frame,
+            text="Fermer",
+            command=self.close,
+            width=10
+        )
+        self.close_button.pack(pady=(0, 10))
+        
+        # La fenêtre n'est plus en topmost pour ne pas gêner l'utilisateur
+        self.window.attributes("-topmost", False)
+        
+        # Redimensionner la fenêtre pour s'adapter au contenu
+        self.window.update_idletasks()
+        window_width = 300
+        window_height = 150  # Hauteur augmentée pour accommoder le bouton
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+        x_position = (screen_width - window_width) // 2
+        y_position = (screen_height - window_height) // 2
+        self.window.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
+
+def traiter_repertoire_serie(chemin_repertoire: str, progress_window: Optional[ProgressWindow] = None) -> None:
     """
     Traite un répertoire de numéro de série et crée un rapport dans ce répertoire
     Les séquences sont triées par ordre chronologique dans le rapport
@@ -390,6 +488,9 @@ def traiter_repertoire_serie(chemin_repertoire: str) -> None:
     
     if not chemins_html:
         print(f"Aucun fichier HTML trouvé pour le numéro de série {numero_serie}")
+        # Mettre à jour la fenêtre de progression si elle existe
+        if progress_window:
+            progress_window.update_progress()
         return
     
     # Collecter tous les résultats pour pouvoir les trier
@@ -428,6 +529,10 @@ def traiter_repertoire_serie(chemin_repertoire: str) -> None:
         subprocess.Popen(['notepad.exe', chemin_fichier_rapport])
     except Exception as e:
         print(f"Erreur lors de la création/ouverture du rapport: {e}")
+    
+    # Mettre à jour la fenêtre de progression si elle existe
+    if progress_window:
+        progress_window.update_progress()
 
 def configurer_encodage() -> None:
     """Configure l'encodage pour les caractères accentués"""
@@ -469,11 +574,21 @@ def main() -> None:
         print("Aucun sous-répertoire trouvé.")
         return
     
+    # Créer la fenêtre de progression
+    progress_window = ProgressWindow(total_files=len(sous_repertoires))
+    
     # Traiter chaque répertoire de numéro de série indépendamment
     for repertoire in sous_repertoires:
-        traiter_repertoire_serie(repertoire)
+        traiter_repertoire_serie(repertoire, progress_window)
     
+    # Afficher un message de fin
+    progress_window.show_completion()
     print("Traitement terminé.")
+    
+    # La fenêtre reste ouverte, l'utilisateur peut la fermer en cliquant sur le bouton
+    # Attendre que l'utilisateur ferme la fenêtre avant de terminer le programme
+    if progress_window.window.winfo_exists():
+        root.wait_window(progress_window.window)
 
 if __name__ == "__main__":
     main()
