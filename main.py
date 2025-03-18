@@ -288,15 +288,30 @@ def analyser_fichier_html(chemin_fichier: str) -> Dict[str, Any]:
     
     return donnees
 
-def trouver_fichiers_html(repertoire: str) -> List[str]:
+def trouver_fichiers_html(repertoire):
     """
     Trouve tous les fichiers HTML dans le répertoire spécifié (non récursif)
+    et les trie par date de dernière modification (croissant)
     """
+    fichiers_html = []
+    
     try:
-        fichiers_html = [os.path.join(repertoire, f) for f in os.listdir(repertoire) 
-                         if f.lower().endswith('.html')]
-        print(f"Trouvé {len(fichiers_html)} fichiers HTML dans {repertoire}")
-        return fichiers_html
+        # Pour chaque fichier, on récupère aussi sa date de dernière modification
+        for fichier in os.listdir(repertoire):
+            if fichier.lower().endswith('.html'):
+                chemin_complet = os.path.join(repertoire, fichier)
+                date_modif = os.path.getmtime(chemin_complet)  # Timestamp de dernière modification
+                fichiers_html.append((chemin_complet, date_modif))
+        
+        # Trier les fichiers par date de modification (croissant)
+        fichiers_html.sort(key=lambda x: x[1])
+        
+        # Extraire seulement les chemins (sans les timestamps)
+        fichiers_tries = [f[0] for f in fichiers_html]
+        
+        print(f"Trouvé {len(fichiers_tries)} fichiers HTML dans {repertoire}, triés par date")
+        return fichiers_tries
+    
     except Exception as e:
         print(f"Erreur lors de la recherche de fichiers dans {repertoire}: {e}")
         return []
@@ -314,6 +329,7 @@ def formater_section_resistances(resistances: Dict[str, Any], rapport_final: Lis
     rapport_final.append("  Résistances à monter:")
     for r_num in ["R46", "R47", "R48"]:
         if resistances.get(f"{r_num}_monter"):
+            # Correction: suppression de l'accolade fermante en trop
             marquage = f" (Marquage CMS: {resistances[f'{r_num}_marquage']})" if resistances.get(f"{r_num}_marquage") else ""
             rapport_final.append(f"    - {r_num}: {resistances[f'{r_num}_monter']}{marquage}")
             
@@ -351,14 +367,15 @@ def generer_contenu_rapport(resultats: Dict[str, Any], rapport_final: List[str])
     if resultats["tests_echec"]:
         formater_section_tests_echec(resultats["tests_echec"], rapport_final)
 
-def traiter_repertoire_serie(chemin_repertoire: str) -> None:
+def traiter_repertoire_serie(chemin_repertoire):
     """
     Traite un répertoire de numéro de série et crée un rapport dans ce répertoire
+    avec les résultats dans l'ordre chronologique strict de date de modification
     """
     numero_serie = os.path.basename(chemin_repertoire)
     print(f"Traitement du numéro de série: {numero_serie}")
     
-    # Trouver tous les fichiers HTML dans ce répertoire
+    # Trouver tous les fichiers HTML dans ce répertoire et les trier par date de modification
     chemins_html = trouver_fichiers_html(chemin_repertoire)
     
     if not chemins_html:
@@ -366,15 +383,31 @@ def traiter_repertoire_serie(chemin_repertoire: str) -> None:
         return
     
     # Générer le rapport pour ce numéro de série
-    rapport_final = [
-        f"Numéro de série : {numero_serie}",
-        "-" * 70  # Séparateur
-    ]
+    rapport_final = []
+    rapport_final.append(f"Numéro de série : {numero_serie}")
+    rapport_final.append("-" * 70)  # Séparateur
     
+    # Parcourir les fichiers dans l'ordre chronologique strict (déjà triés par date de modification)
     for chemin_complet in chemins_html:
         try:
             resultats = analyser_fichier_html(chemin_complet)
-            generer_contenu_rapport(resultats, rapport_final)
+            statut = resultats["resultat_global"] or "Inconnu"
+            rapport_final.append(f"{resultats['nom_fichier']} : {statut}")
+            
+            # Ajouter les détails des tests en échec
+            if resultats["tests_echec"]:
+                rapport_final.append("  Tests en échec:")
+                for test in resultats["tests_echec"]:
+                    rapport_final.append(f"    - {test['nom_test']} ({test['status']})")
+                    
+                    # Formater les détails avec une indentation propre
+                    for ligne in test['detail'].split('\n'):
+                        if ligne.strip():  # Ne pas ajouter les lignes vides
+                            rapport_final.append(f"      * {ligne}")
+                    
+                    # Ajouter une ligne vide entre les tests
+                    rapport_final.append("")
+                    
         except Exception as e:
             print(f"Erreur lors du traitement de {chemin_complet}: {e}")
     
