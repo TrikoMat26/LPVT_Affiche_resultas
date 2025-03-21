@@ -1,0 +1,15 @@
+- Test des alimentations à 24VDC
+   . Lecture mesure +16V AG34461A = 16.19219398499
+   . Lecture mesure -16V AG34461A = -16.21284675598
+   . Lecture mesure +5V AG34461A = 5.391426086426
+   . Lecture mesure -5V AG34461A = 	-5.399563789368
+- Test des alimentations à 115VAC
+   . Lecture mesure +16V AG34461A = 16.19397354126
+   . Lecture mesure -16V AG34461A = -16.27656173706
+- Calcul des résistances
+   . Résistance R46 calculée: 575.323
+   . Résistance R46 à monter: 475 ohms
+   . Résistance R47 calculée: 600.946
+   . Résistance R47 à monter: 681 ohms
+   . Résistance R48 calculée: 547.772
+   . Résistance R48 à monter: 475 ohms
