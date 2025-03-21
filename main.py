@@ -404,7 +404,7 @@ class ProgressWindow:
         
         # S'assurer que la fenêtre reste au-dessus des autres
         self.window.attributes("-topmost", True)
-        
+
         # Créer un frame pour organiser les widgets
         self.frame = tk.Frame(self.window)
         self.frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -464,8 +464,8 @@ class ProgressWindow:
         
         # La fenêtre n'est plus en topmost pour ne pas gêner l'utilisateur
         self.window.attributes("-topmost", False)
-        
-        # Redimensionner la fenêtre pour s'adapter au contenu
+
+# Redimensionner la fenêtre pour s'adapter au contenu
         self.window.update_idletasks()
         window_width = 300
         window_height = 150  # Hauteur augmentée pour accommoder le bouton
@@ -488,7 +488,7 @@ def traiter_repertoire_serie(chemin_repertoire: str, progress_window: Optional[P
     
     if not chemins_html:
         print(f"Aucun fichier HTML trouvé pour le numéro de série {numero_serie}")
-        # Mettre à jour la fenêtre de progression si elle existe
+# Mettre à jour la fenêtre de progression si elle existe
         if progress_window:
             progress_window.update_progress()
         return
@@ -529,8 +529,8 @@ def traiter_repertoire_serie(chemin_repertoire: str, progress_window: Optional[P
         subprocess.Popen(['notepad.exe', chemin_fichier_rapport])
     except Exception as e:
         print(f"Erreur lors de la création/ouverture du rapport: {e}")
-    
-    # Mettre à jour la fenêtre de progression si elle existe
+
+# Mettre à jour la fenêtre de progression si elle existe
     if progress_window:
         progress_window.update_progress()
 
@@ -574,18 +574,18 @@ def main() -> None:
         print("Aucun sous-répertoire trouvé.")
         return
     
-    # Créer la fenêtre de progression
+# Créer la fenêtre de progression
     progress_window = ProgressWindow(total_files=len(sous_repertoires))
     
     # Traiter chaque répertoire de numéro de série indépendamment
     for repertoire in sous_repertoires:
         traiter_repertoire_serie(repertoire, progress_window)
     
-    # Afficher un message de fin
+# Afficher un message de fin
     progress_window.show_completion()
     print("Traitement terminé.")
-    
-    # La fenêtre reste ouverte, l'utilisateur peut la fermer en cliquant sur le bouton
+
+# La fenêtre reste ouverte, l'utilisateur peut la fermer en cliquant sur le bouton
     # Attendre que l'utilisateur ferme la fenêtre avant de terminer le programme
     if progress_window.window.winfo_exists():
         root.wait_window(progress_window.window)
