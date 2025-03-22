@@ -207,171 +207,86 @@ class StatsTestsWindow:
         messagebox.showinfo("Information", f"Génération des statistiques pour {len(self.tests_selectionnes)} tests...")
         self.analyser_fichiers()
     
-    def extraire_valeur_mesure(self, soup, test_parent, identifiant):
+    def extraire_valeur_mesure(self, html_content, test_parent, identifiant):
         """
-        Extrait la valeur d'une mesure spécifique à partir du fichier HTML
+        Extrait la valeur d'une mesure spécifique à partir du contenu HTML en utilisant des expressions régulières
         """
-        # Trouver la section correspondant au test parent
-        table_parent = None
-        
-        # Pour "Test des alimentations à 24VDC"
+        # Traitement pour les alimentations 24VDC
         if test_parent == "Test des alimentations à 24VDC":
-            # Trouver le titre principal "Test des alimentations à 24VDC"
-            for td in soup.find_all("td", colspan="2", string=lambda s: s and "Test des alimentations à 24VDC" in s):
-                if "background-color:#00C4C4" in td.get("style", ""):
-                    # Trouver le sous-test dans la séquence "TEST DES ALIMENTATIONS"
-                    # d'abord, on cherche la div contenant "TEST DES ALIMENTATIONS" après le test parent
-                    current = td
-                    while current:
-                        next_div = current.find_next("div")
-                        if next_div and "Begin Sequence: TEST DES ALIMENTATIONS" in next_div.text:
-                            # Chercher le sous-test dans cette div
-                            if identifiant == "24VDC_+16V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure +16V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            elif identifiant == "24VDC_-16V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure -16V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            elif identifiant == "24VDC_+5V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure +5V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            elif identifiant == "24VDC_-5V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure -5V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            break
-                        current = next_div
-                    break
+            # Extraire le bloc correspondant à ce test
+            block_match = re.search(r"Test des alimentations à 24VDC(.*?)Test des alimentations à 115VAC", html_content, re.DOTALL)
+            if not block_match:
+                return None
+            
+            block = block_match.group(1)
+            
+            # Extraire les valeurs selon l'identifiant
+            if identifiant == "24VDC_+16V":
+                m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_plus16.group(1).strip() if m_plus16 else None
+            elif identifiant == "24VDC_-16V":
+                m_minus16 = re.search(r"Lecture mesure -16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_minus16.group(1).strip() if m_minus16 else None
+            elif identifiant == "24VDC_+5V":
+                m_plus5 = re.search(r"Lecture mesure \+5V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_plus5.group(1).strip() if m_plus5 else None
+            elif identifiant == "24VDC_-5V":
+                m_minus5 = re.search(r"Lecture mesure -5V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_minus5.group(1).strip() if m_minus5 else None
         
+        # Traitement pour les alimentations 115VAC
         elif test_parent == "Test des alimentations à 115VAC":
-            # Trouver le titre principal "Test des alimentations à 115VAC"
-            for td in soup.find_all("td", colspan="2", string=lambda s: s and "Test des alimentations à 115VAC" in s):
-                if "background-color:#00C4C4" in td.get("style", ""):
-                    # Trouver le sous-test dans la séquence "TEST DES ALIMENTATIONS"
-                    current = td
-                    while current:
-                        next_div = current.find_next("div")
-                        if next_div and "Begin Sequence: TEST DES ALIMENTATIONS" in next_div.text:
-                            # Chercher le sous-test dans cette div
-                            if identifiant == "115VAC_+16V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure +16V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            elif identifiant == "115VAC_-16V":
-                                sous_test = next_div.find("td", colspan="2", string=lambda s: s and "Lecture mesure -16V AG34461A" in s)
-                                if sous_test:
-                                    table_parent = sous_test.find_parent("table")
-                            break
-                        current = next_div
-                    break
+            # Extraire le bloc correspondant à ce test
+            block_match = re.search(r"Test des alimentations à 115VAC(.*?)Calcul des résistances", html_content, re.DOTALL)
+            if not block_match:
+                return None
+            
+            block = block_match.group(1)
+            
+            # Extraire les valeurs selon l'identifiant
+            if identifiant == "115VAC_+16V":
+                m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_plus16.group(1).strip() if m_plus16 else None
+            elif identifiant == "115VAC_-16V":
+                m_minus16 = re.search(r"Lecture mesure -16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
+                return m_minus16.group(1).strip() if m_minus16 else None
         
+        # Traitement pour le calcul des résistances
         elif test_parent == "Calcul des résistances":
-            for td in soup.find_all("td", colspan="2", string=lambda s: s and "Calcul des résistances" in s):
-                if "background-color:#00C4C4" in td.get("style", ""):
-                    current = td
-                    while current:
-                        next_div = current.find_next("div")
-                        if next_div and "Begin Sequence: CALCUL DES RESISTANCES" in next_div.text:
-                            if identifiant == "R46_calculee":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R46 calculée" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        return value_cell.text.strip()
-                            elif identifiant == "R46_monter":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R46 à monter" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        match = re.search(r'(\d+)\s*ohms', value_cell.text.strip())
-                                        if match:
-                                            return match.group(1)
-                                        return value_cell.text.strip()
-                            elif identifiant == "R47_calculee":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R47 calculée" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        return value_cell.text.strip()
-                            elif identifiant == "R47_monter":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R47 à monter" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        match = re.search(r'(\d+)\s*ohms', value_cell.text.strip())
-                                        if match:
-                                            return match.group(1)
-                                        return value_cell.text.strip()
-                            elif identifiant == "R48_calculee":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R48 calculée" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        return value_cell.text.strip()
-                            elif identifiant == "R48_monter":
-                                label = next_div.find("td", class_="label", string=lambda s: s and "Résistance R48 à monter" in s)
-                                if label:
-                                    value_cell = label.find_next_sibling("td", class_="value")
-                                    if value_cell:
-                                        match = re.search(r'(\d+)\s*ohms', value_cell.text.strip())
-                                        if match:
-                                            return match.group(1)
-                                        return value_cell.text.strip()
-                            break
-                        current = next_div
-                    break
-        
-        # Pour les mesures d'alimentation, extraire la valeur après "Measurement[1]"
-        if table_parent and identifiant.startswith(("24VDC_", "115VAC_")):
-            # Chercher la ligne contenant "Measurement[1]"
-            for tr in table_parent.find_all("tr"):
-                if "Measurement[1]" in tr.text:
-                    # La valeur est dans la ligne suivante, sous "Data:"
-                    next_tr = tr.find_next_sibling("tr")
-                    if next_tr:
-                        data_label = next_tr.find("td", class_="label", string=lambda s: s and "Data:" in s)
-                        if data_label:
-                            value_cell = data_label.find_next_sibling("td", class_="value")
-                            if not value_cell:
-                                # Si on ne trouve pas dans le sibling direct, chercher dans la même ligne
-                                value_cell = next_tr.find("td", class_="value")
-                                
-                            if value_cell:
-                                # Chercher la valeur directement dans la cellule ou dans un span
-                                span = value_cell.find("span")
-                                text_value = span.text.strip() if span else value_cell.text.strip()
-                                
-                                # S'assurer que les valeurs négatives sont correctement traitées
-                                # Vérifier s'il s'agit d'une valeur négative (commence par un signe moins)
-                                if text_value.startswith('-'):
-                                    return text_value  # Retourner la valeur négative telle quelle
-                                else:
-                                    return text_value  # Retourner la valeur positive telle quelle
-        
+            if identifiant == "R46_calculee":
+                r46_calc = re.search(r"Résistance R46 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
+                return r46_calc.group(1).strip() if r46_calc else None
+            elif identifiant == "R46_monter":
+                r46_monter = re.search(r"Résistance R46 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
+                return r46_monter.group(1).strip() if r46_monter else None
+            elif identifiant == "R47_calculee":
+                r47_calc = re.search(r"Résistance R47 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
+                return r47_calc.group(1).strip() if r47_calc else None
+            elif identifiant == "R47_monter":
+                r47_monter = re.search(r"Résistance R47 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
+                return r47_monter.group(1).strip() if r47_monter else None
+            elif identifiant == "R48_calculee":
+                r48_calc = re.search(r"Résistance R48 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
+                return r48_calc.group(1).strip() if r48_calc else None
+            elif identifiant == "R48_monter":
+                r48_monter = re.search(r"Résistance R48 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
+                return r48_monter.group(1).strip() if r48_monter else None
+                
         return None
     
-    def extraire_numero_serie(self, soup):
-        """Extrait le numéro de série depuis la soupe HTML"""
-        # D'abord chercher dans les entêtes (Serial Number)
-        balise_sn = soup.find("td", class_="hdr_name", string=lambda t: t and "Serial Number:" in t)
-        if balise_sn:
-            balise_sn_value = balise_sn.find_next_sibling("td", class_="hdr_value")
-            if balise_sn_value:
-                sn = balise_sn_value.text.strip()
-                if sn != "NONE":
-                    return sn
+    def extraire_numero_serie(self, html_content):
+        """Extrait le numéro de série depuis le contenu HTML en utilisant des expressions régulières"""
+        # Recherche du numéro de série dans l'en-tête
+        sn_match = re.search(r'Serial Number:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*([^<]+)\s*</td>', html_content, re.DOTALL)
+        if sn_match and sn_match.group(1).strip() != "NONE":
+            return sn_match.group(1).strip()
         
-        # Ensuite chercher dans le contenu pour "Numéro de série de la carte en test"
-        for label in soup.find_all("td", class_="label"):
-            if "série" in label.text:
-                value_cell = label.find_next_sibling("td", class_="value")
-                if value_cell:
-                    return value_cell.text.strip()
+        # Recherche dans le contenu pour "Numéro de série de la carte en test"
+        serie_match = re.search(r'série[^<]*</td>\s*<td[^>]*class="value"[^>]*>\s*([^<]+)\s*</td>', html_content, re.DOTALL)
+        if serie_match:
+            return serie_match.group(1).strip()
         
-        # Si rien n'est trouvé, utiliser le nom du répertoire
+        # Si rien n'est trouvé, on retourne None
         return None
     
     def analyser_fichiers(self):
@@ -382,10 +297,9 @@ class StatsTestsWindow:
             try:
                 with open(fichier, "r", encoding="iso-8859-1", errors="replace") as f:
                     html_content = f.read()
-                    soup = BeautifulSoup(html_content, "html.parser")
                 
                 # Extraire le numéro de série
-                numero_serie = self.extraire_numero_serie(soup) or os.path.basename(os.path.dirname(fichier))
+                numero_serie = self.extraire_numero_serie(html_content) or os.path.basename(os.path.dirname(fichier))
                 
                 # Initialiser le dictionnaire pour ce numéro de série si nécessaire
                 if numero_serie not in donnees:
@@ -393,7 +307,7 @@ class StatsTestsWindow:
                 
                 # Extraire les valeurs pour chaque test sélectionné
                 for nom_complet, test_parent, identifiant in self.tests_selectionnes:
-                    valeur = self.extraire_valeur_mesure(soup, test_parent, identifiant)
+                    valeur = self.extraire_valeur_mesure(html_content, test_parent, identifiant)
                     if valeur:
                         donnees[numero_serie][nom_complet] = valeur
             
