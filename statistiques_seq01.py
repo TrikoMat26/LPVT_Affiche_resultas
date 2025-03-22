@@ -370,9 +370,43 @@ class StatsTestsWindow:
         # Si rien n'est trouvé, on retourne None
         return None
     
+    def extraire_date_heure_du_nom(self, nom_fichier):
+        """
+        Extrait la date et l'heure du nom du fichier au format SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
+        Retourne un tuple (date_formatee, heure_formatee)
+        """
+        # Format attendu: SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
+        match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
+        if match:
+            heure_brute = match.group(1)  # HH MM SS
+            date_brute = match.group(2)   # JJ MM AAAA
+            
+            # Formater pour avoir un format plus lisible et utilisable comme identifiant
+            heure_formatee = heure_brute.replace(" ", ":")
+            date_formatee = date_brute.replace(" ", "/")
+            
+            return date_formatee, heure_formatee
+            
+        return "date_inconnue", "heure_inconnue"
+    
+    def extraire_date_heure(self, html_content, nom_fichier):
+        """Extrait la date et l'heure du test depuis le contenu HTML et/ou du nom de fichier"""
+        # Tenter d'abord de récupérer du contenu HTML
+        date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        date = date_match.group(1).strip() if date_match else None
+        
+        time_match = re.search(r'Time:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        heure = time_match.group(1).strip() if time_match else None
+        
+        # Si on n'a pas trouvé dans le HTML, essayer avec le nom de fichier
+        if not date or not heure:
+            date, heure = self.extraire_date_heure_du_nom(nom_fichier)
+        
+        return date, heure
+    
     def analyser_fichiers(self):
         """Analyse tous les fichiers SEQ-01/SEQ-02 et collecte les données pour les tests sélectionnés"""
-        donnees = {}  # Dictionnaire pour stocker les données: {numero_serie: {test1: valeur1, test2: valeur2, ...}}
+        donnees = {}  # Dictionnaire pour stocker les données: {identifiant_unique: {test1: valeur1, test2: valeur2, ...}}
         
         # Analyse des fichiers SEQ-01
         for fichier in self.fichiers_seq01:
@@ -383,16 +417,28 @@ class StatsTestsWindow:
                 # Extraire le numéro de série
                 numero_serie = self.extraire_numero_serie(html_content) or os.path.basename(os.path.dirname(fichier))
                 
+                # Extraire la date et l'heure du nom de fichier
+                nom_fichier = os.path.basename(fichier)
+                date, heure = self.extraire_date_heure(html_content, nom_fichier)
+                
+                # Créer un identifiant unique avec le numéro de série, la date et l'heure
+                identifiant_unique = f"{numero_serie} [{date}][{heure}]"
+                
                 # Initialiser le dictionnaire pour ce numéro de série si nécessaire
-                if numero_serie not in donnees:
-                    donnees[numero_serie] = {}
+                if identifiant_unique not in donnees:
+                    donnees[identifiant_unique] = {
+                        "Numéro de série": numero_serie,
+                        "Date": date,
+                        "Heure": heure,
+                        "Type": "SEQ-01"
+                    }
                 
                 # Extraire les valeurs SEQ-01 pour chaque test sélectionné
                 for nom_complet, test_parent, identifiant in self.tests_selectionnes:
                     if test_parent.startswith("seq01_"):
                         valeur = self.extraire_valeur_seq01(html_content, test_parent, identifiant)
                         if valeur:
-                            donnees[numero_serie][nom_complet] = valeur
+                            donnees[identifiant_unique][nom_complet] = valeur
             
             except Exception as e:
                 print(f"Erreur lors de l'analyse du fichier SEQ-01 {fichier}: {e}")
@@ -408,16 +454,28 @@ class StatsTestsWindow:
                 # Extraire le numéro de série
                 numero_serie = self.extraire_numero_serie(html_content) or os.path.basename(os.path.dirname(fichier))
                 
+                # Extraire la date et l'heure du nom de fichier
+                nom_fichier = os.path.basename(fichier)
+                date, heure = self.extraire_date_heure(html_content, nom_fichier)
+                
+                # Créer un identifiant unique avec le numéro de série, la date et l'heure
+                identifiant_unique = f"{numero_serie} [{date}][{heure}]"
+                
                 # Initialiser le dictionnaire pour ce numéro de série si nécessaire
-                if numero_serie not in donnees:
-                    donnees[numero_serie] = {}
+                if identifiant_unique not in donnees:
+                    donnees[identifiant_unique] = {
+                        "Numéro de série": numero_serie,
+                        "Date": date,
+                        "Heure": heure,
+                        "Type": "SEQ-02"
+                    }
                 
                 # Extraire les valeurs SEQ-02 pour chaque test sélectionné
                 for nom_complet, test_parent, identifiant in self.tests_selectionnes:
                     if test_parent.startswith("seq02_"):
                         valeur = self.extraire_valeur_seq02(html_content, test_parent, identifiant)
                         if valeur:
-                            donnees[numero_serie][nom_complet] = valeur
+                            donnees[identifiant_unique][nom_complet] = valeur
             
             except Exception as e:
                 print(f"Erreur lors de l'analyse du fichier SEQ-02 {fichier}: {e}")
