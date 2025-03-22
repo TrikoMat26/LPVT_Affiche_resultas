@@ -224,7 +224,7 @@ class StatsTestsWindow:
             return
         
         # Analyser un fichier pour récupérer la liste des tests disponibles
-        messagebox.showinfo("Information", f"{len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés.\nChargement des tests disponibles...")
+        # messagebox.showinfo("Information", f"{len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés.\nChargement des tests disponibles...")
         
         # Créer manuellement la liste des tests disponibles selon les spécifications
         self.creer_liste_tests_predefinies()
@@ -238,68 +238,68 @@ class StatsTestsWindow:
             # Format: (nom_complet, test_parent, identifiant)
             # --------- Tests SEQ-01 ---------
             # Test des alimentations à 24VDC
-            ("SEQ-01 > Test des alimentations à 24VDC > Lecture mesure +16V AG34461A", 
+            ("alim 24VDC +16V", 
                 "seq01_24vdc", "24VDC_+16V"),
-            ("SEQ-01 > Test des alimentations à 24VDC > Lecture mesure -16V AG34461A", 
+            ("alim 24VDC -16V", 
                 "seq01_24vdc", "24VDC_-16V"),
-            ("SEQ-01 > Test des alimentations à 24VDC > Lecture mesure +5V AG34461A", 
+            ("alim 24VDC +5V", 
                 "seq01_24vdc", "24VDC_+5V"),
-            ("SEQ-01 > Test des alimentations à 24VDC > Lecture mesure -5V AG34461A", 
+            ("alim 24VDC -5V", 
                 "seq01_24vdc", "24VDC_-5V"),
             
             # Test des alimentations à 115VAC
-            ("SEQ-01 > Test des alimentations à 115VAC > Lecture mesure +16V AG34461A", 
+            ("alim 115VAC +16V", 
                 "seq01_115vac", "115VAC_+16V"),
-            ("SEQ-01 > Test des alimentations à 115VAC > Lecture mesure -16V AG34461A", 
+            ("alim 115VAC -16V", 
                 "seq01_115vac", "115VAC_-16V"),
             
             # Calcul des résistances
-            ("SEQ-01 > Calcul des résistances > Résistance R46 calculée", 
+            ("R46 calculée", 
                 "seq01_resistances", "R46_calculee"),
-            ("SEQ-01 > Calcul des résistances > Résistance R46 à monter", 
+            ("R46 à monter", 
                 "seq01_resistances", "R46_monter"),
-            ("SEQ-01 > Calcul des résistances > Résistance R47 calculée", 
+            ("R47 calculée", 
                 "seq01_resistances", "R47_calculee"),
-            ("SEQ-01 > Calcul des résistances > Résistance R47 à monter", 
+            ("R47 à monter", 
                 "seq01_resistances", "R47_monter"),
-            ("SEQ-01 > Calcul des résistances > Résistance R48 calculée", 
+            ("R48 calculée", 
                 "seq01_resistances", "R48_calculee"),
-            ("SEQ-01 > Calcul des résistances > Résistance R48 à monter", 
+            ("R48 à monter", 
                 "seq01_resistances", "R48_monter"),
                 
             # --------- Tests SEQ-02 ---------
             # Tests de rapport de transfert
-            ("SEQ-02 > Test 1.9Un sur 2 voies en 19VDC", 
+            ("1.9Un en 19VDC", 
                 "seq02_transfert", "Test_19VDC"),
-            ("SEQ-02 > Test 1.9Un sur 2 voies en 115VAC", 
+            ("1.9Un en 115VAC", 
                 "seq02_transfert", "Test_115VAC"),
                 
-            # Précision du rapport de transfert pour chaque gamme et voie
-            ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie U", 
-                "seq02_precision", "F1_U"),
-            ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie V", 
-                "seq02_precision", "F1_V"),
-            ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie W", 
-                "seq02_precision", "F1_W"),
-            ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie U", 
-                "seq02_precision", "E2_U"),
-            ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie V", 
-                "seq02_precision", "E2_V"),
-            ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie W", 
-                "seq02_precision", "E2_W"),
-            # Ajout des autres gammes...
-            ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie U", 
-                "seq02_precision", "D3_U"),
-            ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie V", 
-                "seq02_precision", "D3_V"),
-            ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie W", 
-                "seq02_precision", "D3_W"),
-            ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie U", 
-                "seq02_precision", "115_U"),
-            ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie V", 
-                "seq02_precision", "115_V"),
-            ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie W", 
-                "seq02_precision", "115_W"),
+            # # Précision du rapport de transfert pour chaque gamme et voie
+            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie U", 
+            #     "seq02_precision", "F1_U"),
+            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie V", 
+            #     "seq02_precision", "F1_V"),
+            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie W", 
+            #     "seq02_precision", "F1_W"),
+            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie U", 
+            #     "seq02_precision", "E2_U"),
+            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie V", 
+            #     "seq02_precision", "E2_V"),
+            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie W", 
+            #     "seq02_precision", "E2_W"),
+            # # Ajout des autres gammes...
+            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie U", 
+            #     "seq02_precision", "D3_U"),
+            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie V", 
+            #     "seq02_precision", "D3_V"),
+            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie W", 
+            #     "seq02_precision", "D3_W"),
+            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie U", 
+            #     "seq02_precision", "115_U"),
+            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie V", 
+            #     "seq02_precision", "115_V"),
+            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie W", 
+            #     "seq02_precision", "115_W"),
         ]
     
     def afficher_tests_disponibles(self):
@@ -323,7 +323,7 @@ class StatsTestsWindow:
         self.tests_selectionnes = [self.tests_disponibles[i] for i in indices]
         
         # Analyser les fichiers pour récupérer les données
-        messagebox.showinfo("Information", f"Génération des statistiques pour {len(self.tests_selectionnes)} tests...")
+        # messagebox.showinfo("Information", f"Génération des statistiques pour {len(self.tests_selectionnes)} tests...")
         self.analyser_fichiers()
     
     def extraire_valeur_seq01(self, html_content, test_parent, identifiant):
@@ -409,27 +409,27 @@ class StatsTestsWindow:
                 return match.group(1).strip() if match else None
         
         # Précision du rapport de transfert
-        elif test_parent == "seq02_precision":
-            # Extraire la gamme et la voie à partir de l'identifiant (ex: F1_U)
-            if len(identifiant) < 4:
-                return None
+        # elif test_parent == "seq02_precision":
+        #     # Extraire la gamme et la voie à partir de l'identifiant (ex: F1_U)
+        #     if len(identifiant) < 4:
+        #         return None
                 
-            roue_codeuse = identifiant[0]
-            gamme_num = identifiant[1:-2]
-            voie = identifiant[-1]
+        #     roue_codeuse = identifiant[0]
+        #     gamme_num = identifiant[1:-2]
+        #     voie = identifiant[-1]
             
-            # Pattern pour trouver les sections de précision du rapport de transfert
-            pattern = fr"ROUE CODEUSE = {roue_codeuse} \.\. GAMME = {gamme_num} \.\. Voie {voie}.*?Valeur r[^<]*inject[^<]*/ Valeur sortie attendue[^/]*/ Valeur sortie mesur[^/]*/ Pr[^<]*:</td>\s*<td[^>]*>\s*([^<]+)</td>"
-            match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
+        #     # Pattern pour trouver les sections de précision du rapport de transfert
+        #     pattern = fr"ROUE CODEUSE = {roue_codeuse} \.\. GAMME = {gamme_num} \.\. Voie {voie}.*?Valeur r[^<]*inject[^<]*/ Valeur sortie attendue[^/]*/ Valeur sortie mesur[^/]*/ Pr[^<]*:</td>\s*<td[^>]*>\s*([^<]+)</td>"
+        #     match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
             
-            if match:
-                # Renvoyer seulement la précision (dernier élément après le /)
-                valeurs = match.group(1).strip().split("/")
-                if len(valeurs) >= 4:
-                    precision = valeurs[3].strip()
-                    return precision
+        #     if match:
+        #         # Renvoyer seulement la précision (dernier élément après le /)
+        #         valeurs = match.group(1).strip().split("/")
+        #         if len(valeurs) >= 4:
+        #             precision = valeurs[3].strip()
+        #             return precision
             
-            return None
+        #     return None
             
         return None
     
@@ -447,6 +447,21 @@ class StatsTestsWindow:
         
         # Si rien n'est trouvé, on retourne None
         return None
+
+    def extraire_statut_test(self, html_content):
+        """Extrait le statut du test (Passed/Failed) depuis le contenu HTML"""
+        # Recherche du statut dans la ligne spécifiée: UUT Result
+        status_match = re.search(r"<tr><td class='hdr_name'><b>UUT Result: </b></td><td class='hdr_value'><b><span style=\"color:[^\"]+;\">([^<]+)</span></b></td></tr>", html_content, re.DOTALL)
+        if status_match:
+            return status_match.group(1).strip()
+        
+        # Rechercher dans un format alternatif possible
+        alt_status_match = re.search(r"UUT Result:.*?<td[^>]*class=\"hdr_value\"[^>]*>.*?<span[^>]*>(Passed|Failed)</span>", html_content, re.DOTALL | re.IGNORECASE)
+        if alt_status_match:
+            return alt_status_match.group(1).strip()
+        
+        # Si rien n'est trouvé, on retourne Inconnu
+        return "Inconnu"
     
     def analyser_fichiers(self):
         """Analyse tous les fichiers SEQ-01/SEQ-02 et collecte les données pour les tests sélectionnés"""
@@ -465,6 +480,9 @@ class StatsTestsWindow:
                 nom_fichier = os.path.basename(fichier)
                 date, heure = self.extraire_date_heure(html_content, nom_fichier)
                 
+                # Extraire le statut du test
+                statut = self.extraire_statut_test(html_content)
+                
                 # Créer un identifiant unique avec le numéro de série, la date et l'heure
                 identifiant_unique = f"{numero_serie} [{date}][{heure}]"
                 
@@ -474,7 +492,8 @@ class StatsTestsWindow:
                         "Numéro de série": numero_serie,
                         "Date": date,
                         "Heure": heure,
-                        "Type": "SEQ-01"
+                        "Type": "SEQ-01",
+                        "Statut": statut
                     }
                 
                 # Extraire les valeurs SEQ-01 pour chaque test sélectionné
@@ -502,6 +521,9 @@ class StatsTestsWindow:
                 nom_fichier = os.path.basename(fichier)
                 date, heure = self.extraire_date_heure(html_content, nom_fichier)
                 
+                # Extraire le statut du test
+                statut = self.extraire_statut_test(html_content)
+                
                 # Créer un identifiant unique avec le numéro de série, la date et l'heure
                 identifiant_unique = f"{numero_serie} [{date}][{heure}]"
                 
@@ -511,7 +533,8 @@ class StatsTestsWindow:
                         "Numéro de série": numero_serie,
                         "Date": date,
                         "Heure": heure,
-                        "Type": "SEQ-02"
+                        "Type": "SEQ-02",
+                        "Statut": statut
                     }
                 
                 # Extraire les valeurs SEQ-02 pour chaque test sélectionné
@@ -557,15 +580,20 @@ class StatsTestsWindow:
             # Pas de tri chronologique, juste créer le DataFrame normalement
             df = pd.DataFrame.from_dict(self.data_tests, orient='index')
         
+        # Supprimer les colonnes "Numéro de série", "Date", "Heure" du DataFrame
+        # Mais conserver la colonne "Statut"
+        colonnes_a_supprimer = ["Numéro de série", "Date", "Heure"]
+        df = df.drop(columns=colonnes_a_supprimer, errors='ignore')
+        
         # Sauvegarder en Excel
         chemin_excel = os.path.join(self.repertoire_parent, "statistiques_SEQ01_SEQ02.xlsx")
         try:
             # Utilisation d'un nom de feuille sans caractères spéciaux
             df.to_excel(chemin_excel, sheet_name="Statistiques_SEQ01_02")
-            messagebox.showinfo(
-                "Succès", 
-                f"Tableau statistique créé avec succès!\n\nFichier: {chemin_excel}"
-            )
+            # messagebox.showinfo(
+            #     "Succès", 
+            #     f"Tableau statistique créé avec succès!\n\nFichier: {chemin_excel}"
+            # )
             
             # Ouvrir le fichier Excel
             os.startfile(chemin_excel)
