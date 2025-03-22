@@ -1,0 +1,4 @@
+- Test 1.9Un sur 2 voies en 19VDC
+  . Lecture mesure -16V AG34461A = -16.30890083313
+- Test 1.9Un sur 2 voies en 115VAC
+  . Lecture mesure -16V AG34461A = -16.39315414429
