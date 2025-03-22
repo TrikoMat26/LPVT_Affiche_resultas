@@ -30,7 +30,77 @@ class StatsTestsWindow:
         self.root.title("Statistiques SEQ-01 et SEQ-02")
         self.root.geometry("900x700")
         self.creer_interface()
+    
+    def extraire_date_heure_du_nom(self, nom_fichier):
+        """
+        Extrait la date et l'heure du nom du fichier au format SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
+        Retourne un tuple (date_formatee, heure_formatee)
+        """
+        # Format attendu: SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
+        match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
+        if match:
+            heure_brute = match.group(1)  # HH MM SS
+            date_brute = match.group(2)   # JJ MM AAAA
+            
+            # Formater pour avoir un format plus lisible et utilisable comme identifiant
+            heure_formatee = heure_brute.replace(" ", ":")
+            date_formatee = date_brute.replace(" ", "/")
+            
+            return date_formatee, heure_formatee
+            
+        return "date_inconnue", "heure_inconnue"
+    
+    def extraire_date_heure(self, html_content, nom_fichier):
+        """Extrait la date et l'heure du test depuis le contenu HTML et/ou du nom de fichier"""
+        # Tenter d'abord de récupérer du contenu HTML
+        date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        date = date_match.group(1).strip() if date_match else None
         
+        time_match = re.search(r'Time:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        heure = time_match.group(1).strip() if time_match else None
+        
+        # Si on n'a pas trouvé dans le HTML, essayer avec le nom de fichier
+        if not date or not heure:
+            date, heure = self.extraire_date_heure_du_nom(nom_fichier)
+        
+        return date, heure
+    
+    def obtenir_cle_tri_chronologique(self, identifiant_unique):
+        """
+        Extrait la date et l'heure d'un identifiant unique pour permettre un tri chronologique
+        Format attendu: "numero_serie [JJ/MM/AAAA][HH:MM:SS]"
+        Retourne un tuple pour le tri: (numero_serie, AAAA, MM, JJ, HH, MM, SS)
+        """
+        try:
+            # Séparer le n° de série de la partie date/heure
+            parties = identifiant_unique.split(' [')
+            if len(parties) < 2:
+                return (identifiant_unique, 0, 0, 0, 0, 0, 0)  # Pas de date/heure
+            
+            numero_serie = parties[0]
+            
+            # Reconstruire la partie date/heure avec des crochets
+            partie_date_heure = '[' + '['.join(parties[1:])
+            
+            # Extraire la date [JJ/MM/AAAA]
+            match_date = re.search(r'\[(\d+)/(\d+)/(\d+)\]', partie_date_heure)
+            if not match_date:
+                return (numero_serie, 0, 0, 0, 0, 0, 0)
+            
+            jour, mois, annee = map(int, match_date.groups())
+            
+            # Extraire l'heure [HH:MM:SS]
+            match_heure = re.search(r'\[(\d+):(\d+):(\d+)\]', partie_date_heure)
+            if not match_heure:
+                return (numero_serie, annee, mois, jour, 0, 0, 0)
+            
+            heure, minute, seconde = map(int, match_heure.groups())
+            
+            return (numero_serie, annee, mois, jour, heure, minute, seconde)
+        except:
+            # En cas d'erreur, renvoyer l'identifiant original comme clé de tri
+            return (identifiant_unique, 0, 0, 0, 0, 0, 0)
+    
     def configurer_encodage(self):
         """Configure l'encodage pour les caractères accentués"""
         try:
@@ -93,6 +163,14 @@ class StatsTestsWindow:
             text="Désélectionner tout",
             command=self.deselectionner_tous_tests
         ).pack(side=tk.LEFT, padx=5)
+        
+        # Option de tri chronologique
+        self.tri_chrono_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            frame_btns, 
+            text="Tri chronologique par n° de série", 
+            variable=self.tri_chrono_var
+        ).pack(side=tk.RIGHT, padx=5)
         
         # Bouton pour générer le rapport statistique
         btn_generer = ttk.Button(
@@ -370,40 +448,6 @@ class StatsTestsWindow:
         # Si rien n'est trouvé, on retourne None
         return None
     
-    def extraire_date_heure_du_nom(self, nom_fichier):
-        """
-        Extrait la date et l'heure du nom du fichier au format SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
-        Retourne un tuple (date_formatee, heure_formatee)
-        """
-        # Format attendu: SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
-        match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
-        if match:
-            heure_brute = match.group(1)  # HH MM SS
-            date_brute = match.group(2)   # JJ MM AAAA
-            
-            # Formater pour avoir un format plus lisible et utilisable comme identifiant
-            heure_formatee = heure_brute.replace(" ", ":")
-            date_formatee = date_brute.replace(" ", "/")
-            
-            return date_formatee, heure_formatee
-            
-        return "date_inconnue", "heure_inconnue"
-    
-    def extraire_date_heure(self, html_content, nom_fichier):
-        """Extrait la date et l'heure du test depuis le contenu HTML et/ou du nom de fichier"""
-        # Tenter d'abord de récupérer du contenu HTML
-        date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
-        date = date_match.group(1).strip() if date_match else None
-        
-        time_match = re.search(r'Time:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
-        heure = time_match.group(1).strip() if time_match else None
-        
-        # Si on n'a pas trouvé dans le HTML, essayer avec le nom de fichier
-        if not date or not heure:
-            date, heure = self.extraire_date_heure_du_nom(nom_fichier)
-        
-        return date, heure
-    
     def analyser_fichiers(self):
         """Analyse tous les fichiers SEQ-01/SEQ-02 et collecte les données pour les tests sélectionnés"""
         donnees = {}  # Dictionnaire pour stocker les données: {identifiant_unique: {test1: valeur1, test2: valeur2, ...}}
@@ -490,9 +534,28 @@ class StatsTestsWindow:
         if not self.data_tests:
             messagebox.showinfo("Information", "Aucune donnée collectée.")
             return
-        
-        # Créer un DataFrame pandas
-        df = pd.DataFrame.from_dict(self.data_tests, orient='index')
+
+        # Si le tri chronologique est activé, on regroupe par numéro de série et on trie
+        if self.tri_chrono_var.get():
+            # Grouper les données par numéro de série
+            donnees_par_serie = {}
+            identifiants_tries = []
+            
+            # 1. Trier les identifiants chronologiquement
+            for identifiant in sorted(self.data_tests.keys(), key=self.obtenir_cle_tri_chronologique):
+                numero_serie = self.data_tests[identifiant]["Numéro de série"]
+                
+                if numero_serie not in donnees_par_serie:
+                    donnees_par_serie[numero_serie] = []
+                
+                donnees_par_serie[numero_serie].append(identifiant)
+                identifiants_tries.append(identifiant)
+            
+            # 2. Créer le DataFrame avec l'ordre des identifiants établi
+            df = pd.DataFrame.from_dict({id_unique: self.data_tests[id_unique] for id_unique in identifiants_tries}, orient='index')
+        else:
+            # Pas de tri chronologique, juste créer le DataFrame normalement
+            df = pd.DataFrame.from_dict(self.data_tests, orient='index')
         
         # Sauvegarder en Excel
         chemin_excel = os.path.join(self.repertoire_parent, "statistiques_SEQ01_SEQ02.xlsx")
