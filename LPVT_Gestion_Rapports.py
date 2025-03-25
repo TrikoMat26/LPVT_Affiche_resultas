@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from typing import Dict, List, Any, Set, Optional, Tuple
 import io
+# Importation des fonctions de Affiche_resultats.py
+import subprocess
+from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
 
 class StatsTestsWindow:
     """
@@ -172,13 +175,23 @@ class StatsTestsWindow:
             variable=self.tri_chrono_var
         ).pack(side=tk.RIGHT, padx=5)
         
+        # Frame pour les boutons d'action
+        frame_actions = ttk.Frame(main_frame)
+        frame_actions.pack(fill=tk.X, padx=5, pady=10)
+        
         # Bouton pour générer le rapport statistique
-        btn_generer = ttk.Button(
-            main_frame, 
+        ttk.Button(
+            frame_actions, 
             text="Générer statistiques", 
             command=self.generer_statistiques
-        )
-        btn_generer.pack(pady=10)
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # Bouton pour générer les rapports détaillés (Affiche_resultats)
+        ttk.Button(
+            frame_actions,
+            text="Générer rapports détaillés",
+            command=self.generer_rapports_detailles
+        ).pack(side=tk.RIGHT, padx=5)
     
     def selectionner_tous_tests(self):
         """Sélectionne tous les tests dans la liste"""
@@ -600,6 +613,41 @@ class StatsTestsWindow:
         
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la création du tableau: {e}")
+    
+    def generer_rapports_detailles(self):
+        """
+        Génère les rapports détaillés en utilisant les fonctions de Affiche_resultats.py
+        en se basant sur le répertoire déjà sélectionné
+        """
+        if not self.repertoire_parent:
+            messagebox.showinfo("Information", "Veuillez d'abord sélectionner un répertoire.")
+            return
+        
+        try:
+            # Obtenir tous les sous-répertoires directs (les numéros de série)
+            sous_repertoires = [os.path.join(self.repertoire_parent, d) for d in os.listdir(self.repertoire_parent) 
+                               if os.path.isdir(os.path.join(self.repertoire_parent, d))]
+            
+            if not sous_repertoires:
+                messagebox.showinfo("Information", 
+                                    "Aucun sous-répertoire (numéro de série) trouvé dans le répertoire sélectionné.")
+                return
+            
+            # Créer une fenêtre de progression
+            progress_window = ProgressWindow(total_files=len(sous_repertoires))
+            
+            # Traiter chaque répertoire de numéro de série
+            for repertoire in sous_repertoires:
+                # Utiliser la fonction importée de Affiche_resultats.py
+                traiter_repertoire_serie(repertoire, progress_window)
+            
+            # Afficher un message de fin
+            progress_window.show_completion()
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la génération des rapports: {e}")
+            import traceback
+            traceback.print_exc()
     
     def lancer(self):
         """Lance l'application"""
