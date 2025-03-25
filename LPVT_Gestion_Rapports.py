@@ -7,16 +7,17 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from typing import Dict, List, Any, Set, Optional, Tuple
 import io
-# Importation des fonctions de Affiche_resultats.py
 import subprocess
 from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
+import webbrowser
 
-class StatsTestsWindow:
+class ModernStatsTestsWindow:
     """
-    Fenêtre principale pour l'analyse statistique des tests SEQ-01 et SEQ-02
+    Fenêtre modernisée pour l'analyse statistique des tests SEQ-01 et SEQ-02
+    avec toutes les fonctionnalités originales
     """
     def __init__(self):
-        """Initialise l'application"""
+        """Initialise l'application avec une interface moderne"""
         # Configuration de l'encodage
         self.configurer_encodage()
         
@@ -30,79 +31,265 @@ class StatsTestsWindow:
         
         # Interface graphique
         self.root = tk.Tk()
-        self.root.title("Statistiques SEQ-01 et SEQ-02")
-        self.root.geometry("900x700")
-        self.creer_interface()
-    
-    def extraire_date_heure_du_nom(self, nom_fichier):
-        """
-        Extrait la date et l'heure du nom du fichier au format SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
-        Retourne un tuple (date_formatee, heure_formatee)
-        """
-        # Format attendu: SEQ-XX_LPVT_Report[HH MM SS][JJ MM AAAA].html
-        match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
-        if match:
-            heure_brute = match.group(1)  # HH MM SS
-            date_brute = match.group(2)   # JJ MM AAAA
-            
-            # Formater pour avoir un format plus lisible et utilisable comme identifiant
-            heure_formatee = heure_brute.replace(" ", ":")
-            date_formatee = date_brute.replace(" ", "/")
-            
-            return date_formatee, heure_formatee
-            
-        return "date_inconnue", "heure_inconnue"
-    
-    def extraire_date_heure(self, html_content, nom_fichier):
-        """Extrait la date et l'heure du test depuis le contenu HTML et/ou du nom de fichier"""
-        # Tenter d'abord de récupérer du contenu HTML
-        date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
-        date = date_match.group(1).strip() if date_match else None
+        self.root.title("LPVT - Analyse des tests SEQ-01/SEQ-02")
+        self.root.geometry("1100x750")
+        self.root.minsize(900, 650)
         
-        time_match = re.search(r'Time:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
-        heure = time_match.group(1).strip() if time_match else None
+        # Style moderne
+        self.setup_styles()
         
-        # Si on n'a pas trouvé dans le HTML, essayer avec le nom de fichier
-        if not date or not heure:
-            date, heure = self.extraire_date_heure_du_nom(nom_fichier)
+        # Création de l'interface
+        self.creer_interface_moderne()
         
-        return date, heure
+        # Initialiser la liste des tests prédéfinis
+        self.creer_liste_tests_predefinies()
     
-    def obtenir_cle_tri_chronologique(self, identifiant_unique):
+    def setup_styles(self):
+        """Configure les styles modernes pour l'interface"""
+        style = ttk.Style()
+        
+        # Thème général
+        style.theme_use('clam')
+        
+        # Couleurs
+        bg_color = "#f0f0f0"
+        primary_color = "#2c3e50"
+        secondary_color = "#3498db"
+        accent_color = "#e74c3c"
+        
+        style.configure('TFrame', background=bg_color)
+        style.configure('TLabel', background=bg_color, font=('Segoe UI', 10))
+        style.configure('TButton', font=('Segoe UI', 10), padding=6)
+        style.configure('Title.TLabel', font=('Segoe UI', 14, 'bold'), foreground=primary_color)
+        style.configure('Secondary.TButton', foreground='white', background=secondary_color)
+        style.configure('Accent.TButton', foreground='white', background=accent_color)
+        style.configure('Treeview', font=('Segoe UI', 9), rowheight=25)
+        style.configure('Treeview.Heading', font=('Segoe UI', 10, 'bold'))
+        style.map('Treeview', background=[('selected', secondary_color)])
+        
+        self.bg_color = bg_color
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+        self.accent_color = accent_color
+    
+    def creer_interface_moderne(self):
+        """Crée l'interface utilisateur moderne"""
+        # Frame principal avec padding
+        main_frame = ttk.Frame(self.root, padding=(15, 15, 15, 15))
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Header avec titre et boutons d'action
+        header_frame = ttk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Titre
+        title_label = ttk.Label(
+            header_frame, 
+            text="Analyse des tests SEQ-01/SEQ-02", 
+            style='Title.TLabel'
+        )
+        title_label.pack(side=tk.LEFT)
+        
+        # Boutons d'action à droite
+        action_buttons_frame = ttk.Frame(header_frame)
+        action_buttons_frame.pack(side=tk.RIGHT)
+        
+        ttk.Button(
+            action_buttons_frame,
+            text="Aide",
+            command=self.show_help,
+            style='Secondary.TButton'
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # Section de sélection du répertoire
+        dir_frame = ttk.LabelFrame(
+            main_frame, 
+            text=" Répertoire source ", 
+            padding=(10, 5, 10, 10)
+        )
+        dir_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        dir_selection_frame = ttk.Frame(dir_frame)
+        dir_selection_frame.pack(fill=tk.X)
+        
+        # Bouton de sélection
+        select_dir_btn = ttk.Button(
+            dir_selection_frame,
+            text="Sélectionner un répertoire",
+            command=self.selectionner_repertoire,
+            style='Secondary.TButton'
+        )
+        select_dir_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Affichage du chemin
+        self.dir_path_label = ttk.Label(
+            dir_selection_frame, 
+            text="Aucun répertoire sélectionné",
+            foreground="#7f8c8d",
+            font=('Segoe UI', 9)
+        )
+        self.dir_path_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Info sur les fichiers trouvés
+        self.files_info_label = ttk.Label(
+            dir_frame,
+            text="",
+            foreground=self.secondary_color,
+            font=('Segoe UI', 9)
+        )
+        self.files_info_label.pack(fill=tk.X, pady=(5, 0))
+        
+        # Section de sélection des tests
+        tests_frame = ttk.LabelFrame(
+            main_frame, 
+            text=" Sélection des tests à analyser ", 
+            padding=(10, 5, 10, 10))
+        tests_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Contrôles de sélection en haut
+        tests_controls_frame = ttk.Frame(tests_frame)
+        tests_controls_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Button(
+            tests_controls_frame,
+            text="Tout sélectionner",
+            command=self.selectionner_tous_tests,
+            style='Secondary.TButton'
+        ).pack(side=tk.LEFT, padx=(0, 5))
+        
+        ttk.Button(
+            tests_controls_frame,
+            text="Tout désélectionner",
+            command=self.deselectionner_tous_tests,
+            style='Secondary.TButton'
+        ).pack(side=tk.LEFT)
+        
+        # Checkbox de tri chronologique à droite
+        self.tri_chrono_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            tests_controls_frame,
+            text="Tri chronologique par n° de série",
+            variable=self.tri_chrono_var,
+            onvalue=True,
+            offvalue=False
+        ).pack(side=tk.RIGHT)
+        
+        # Liste des tests avec scrollbar et recherche
+        tests_list_container = ttk.Frame(tests_frame)
+        tests_list_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Barre de recherche
+        search_frame = ttk.Frame(tests_list_container)
+        search_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        ttk.Label(search_frame, text="Rechercher:").pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.search_var = tk.StringVar()
+        search_entry = ttk.Entry(
+            search_frame,
+            textvariable=self.search_var
+        )
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        search_entry.bind('<KeyRelease>', self.filter_tests_list)
+        
+        # Liste des tests dans un Treeview
+        self.tests_tree = ttk.Treeview(
+            tests_list_container,
+            selectmode='extended',
+            columns=('test_id'),
+            show='tree',
+            height=15
+        )
+        
+        scroll_y = ttk.Scrollbar(
+            tests_list_container, 
+            orient=tk.VERTICAL, 
+            command=self.tests_tree.yview
+        )
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.tests_tree.configure(yscrollcommand=scroll_y.set)
+        self.tests_tree.pack(fill=tk.BOTH, expand=True)
+        
+        # Style pour les éléments sélectionnés
+        self.tests_tree.tag_configure('selected', background=self.secondary_color, foreground='white')
+        
+        # Boutons d'action en bas
+        action_frame = ttk.Frame(main_frame)
+        action_frame.pack(fill=tk.X, pady=(15, 0))
+        
+        ttk.Button(
+            action_frame,
+            text="Générer le rapport statistique",
+            command=self.generer_statistiques,
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(
+            action_frame,
+            text="Générer les rapports détaillés",
+            command=self.generer_rapports_detailles,
+            style='Secondary.TButton'
+        ).pack(side=tk.LEFT)
+        
+        # Barre de status
+        self.status_bar = ttk.Frame(main_frame, height=25)
+        self.status_bar.pack(fill=tk.X, pady=(15, 0))
+        
+        self.status_label = ttk.Label(
+            self.status_bar,
+            text="Prêt",
+            foreground="#7f8c8d",
+            font=('Segoe UI', 9)
+        )
+        self.status_label.pack(side=tk.LEFT)
+        
+        # Configurer le redimensionnement
+        main_frame.grid_rowconfigure(2, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
+    
+    def show_help(self):
+        """Affiche une aide contextuelle"""
+        help_text = """
+        Aide - Analyse des tests SEQ-01/SEQ-02
+        
+        1. Sélectionnez un répertoire contenant les fichiers HTML des tests
+        2. Sélectionnez les tests à analyser dans la liste
+        3. Cliquez sur "Générer le rapport statistique" pour créer un fichier Excel
+        4. Utilisez "Générer les rapports détaillés" pour créer des rapports PDF
+        
+        Options :
+        - Tri chronologique : organise les résultats par numéro de série et date
+        - Barre de recherche : filtre la liste des tests disponibles
         """
-        Extrait la date et l'heure d'un identifiant unique pour permettre un tri chronologique
-        Format attendu: "numero_serie [JJ/MM/AAAA][HH:MM:SS]"
-        Retourne un tuple pour le tri: (numero_serie, AAAA, MM, JJ, HH, MM, SS)
-        """
-        try:
-            # Séparer le n° de série de la partie date/heure
-            parties = identifiant_unique.split(' [')
-            if len(parties) < 2:
-                return (identifiant_unique, 0, 0, 0, 0, 0, 0)  # Pas de date/heure
-            
-            numero_serie = parties[0]
-            
-            # Reconstruire la partie date/heure avec des crochets
-            partie_date_heure = '[' + '['.join(parties[1:])
-            
-            # Extraire la date [JJ/MM/AAAA]
-            match_date = re.search(r'\[(\d+)/(\d+)/(\d+)\]', partie_date_heure)
-            if not match_date:
-                return (numero_serie, 0, 0, 0, 0, 0, 0)
-            
-            jour, mois, annee = map(int, match_date.groups())
-            
-            # Extraire l'heure [HH:MM:SS]
-            match_heure = re.search(r'\[(\d+):(\d+):(\d+)\]', partie_date_heure)
-            if not match_heure:
-                return (numero_serie, annee, mois, jour, 0, 0, 0)
-            
-            heure, minute, seconde = map(int, match_heure.groups())
-            
-            return (numero_serie, annee, mois, jour, heure, minute, seconde)
-        except:
-            # En cas d'erreur, renvoyer l'identifiant original comme clé de tri
-            return (identifiant_unique, 0, 0, 0, 0, 0, 0)
+        messagebox.showinfo("Aide", help_text.strip())
+    
+    def update_status(self, message):
+        """Met à jour la barre de status"""
+        self.status_label.config(text=message)
+        self.root.update_idletasks()
+    
+    def filter_tests_list(self, event=None):
+        """Filtre la liste des tests en fonction de la recherche"""
+        search_term = self.search_var.get().lower()
+        
+        # Effacer la liste actuelle
+        for item in self.tests_tree.get_children():
+            self.tests_tree.delete(item)
+        
+        # Ajouter les tests qui correspondent au terme de recherche
+        for idx, (nom_complet, test_parent, identifiant) in enumerate(self.tests_disponibles):
+            if search_term in nom_complet.lower():
+                self.tests_tree.insert('', 'end', text=nom_complet, values=(identifiant))
+    
+    def selectionner_tous_tests(self):
+        """Sélectionne tous les tests dans la liste"""
+        for item in self.tests_tree.get_children():
+            self.tests_tree.selection_add(item)
+    
+    def deselectionner_tous_tests(self):
+        """Désélectionne tous les tests dans la liste"""
+        self.tests_tree.selection_remove(self.tests_tree.get_children())
     
     def configurer_encodage(self):
         """Configure l'encodage pour les caractères accentués"""
@@ -110,97 +297,33 @@ class StatsTestsWindow:
             if sys.stdout and hasattr(sys.stdout, 'encoding') and sys.stdout.encoding != 'utf-8':
                 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
         except (AttributeError, TypeError):
-            # En cas d'erreur, on continue sans changer l'encodage
             pass
 
-    def creer_interface(self):
-        """Crée l'interface utilisateur"""
-        # Frame principal
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Bouton pour sélectionner le répertoire
-        btn_repertoire = ttk.Button(
-            main_frame, 
-            text="Sélectionner répertoire", 
-            command=self.selectionner_repertoire
-        )
-        btn_repertoire.pack(pady=10)
-        
-        # Label pour afficher le répertoire sélectionné
-        self.lbl_repertoire = ttk.Label(main_frame, text="Aucun répertoire sélectionné")
-        self.lbl_repertoire.pack(pady=5)
-        
-        # Frame pour la sélection des tests
-        frame_selection = ttk.LabelFrame(main_frame, text="Sélection des tests")
-        frame_selection.pack(fill=tk.BOTH, expand=True, pady=10, padx=5)
-        
-        # Liste des tests disponibles avec scrollbar
-        frame_tests = ttk.Frame(frame_selection)
-        frame_tests.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        scroll_y = ttk.Scrollbar(frame_tests, orient=tk.VERTICAL)
-        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        self.listbox_tests = tk.Listbox(
-            frame_tests, 
-            selectmode=tk.MULTIPLE, 
-            yscrollcommand=scroll_y.set,
-            font=("Courier", 10)  # Police à largeur fixe pour faciliter la lecture
-        )
-        self.listbox_tests.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll_y.config(command=self.listbox_tests.yview)
-        
-        # Boutons de sélection
-        frame_btns = ttk.Frame(frame_selection)
-        frame_btns.pack(fill=tk.X, padx=5, pady=5)
-        
-        ttk.Button(
-            frame_btns, 
-            text="Sélectionner tout",
-            command=self.selectionner_tous_tests
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Button(
-            frame_btns, 
-            text="Désélectionner tout",
-            command=self.deselectionner_tous_tests
-        ).pack(side=tk.LEFT, padx=5)
-        
-        # Option de tri chronologique
-        self.tri_chrono_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            frame_btns, 
-            text="Tri chronologique par n° de série", 
-            variable=self.tri_chrono_var
-        ).pack(side=tk.RIGHT, padx=5)
-        
-        # Frame pour les boutons d'action
-        frame_actions = ttk.Frame(main_frame)
-        frame_actions.pack(fill=tk.X, padx=5, pady=10)
-        
-        # Bouton pour générer le rapport statistique
-        ttk.Button(
-            frame_actions, 
-            text="Générer statistiques", 
-            command=self.generer_statistiques
-        ).pack(side=tk.LEFT, padx=5)
-        
-        # Bouton pour générer les rapports détaillés (Affiche_resultats)
-        ttk.Button(
-            frame_actions,
-            text="Générer rapports détaillés",
-            command=self.generer_rapports_detailles
-        ).pack(side=tk.RIGHT, padx=5)
+    def creer_liste_tests_predefinies(self):
+        """
+        Crée une liste prédéfinie des tests à extraire (identique à l'original)
+        """
+        self.tests_disponibles = [
+            # Format: (nom_complet, test_parent, identifiant)
+            # --------- Tests SEQ-01 ---------
+            ("alim 24VDC +16V", "seq01_24vdc", "24VDC_+16V"),
+            ("alim 24VDC -16V", "seq01_24vdc", "24VDC_-16V"),
+            ("alim 24VDC +5V", "seq01_24vdc", "24VDC_+5V"),
+            ("alim 24VDC -5V", "seq01_24vdc", "24VDC_-5V"),
+            ("alim 115VAC +16V", "seq01_115vac", "115VAC_+16V"),
+            ("alim 115VAC -16V", "seq01_115vac", "115VAC_-16V"),
+            ("R46 calculée", "seq01_resistances", "R46_calculee"),
+            ("R46 à monter", "seq01_resistances", "R46_monter"),
+            ("R47 calculée", "seq01_resistances", "R47_calculee"),
+            ("R47 à monter", "seq01_resistances", "R47_monter"),
+            ("R48 calculée", "seq01_resistances", "R48_calculee"),
+            ("R48 à monter", "seq01_resistances", "R48_monter"),
+            # --------- Tests SEQ-02 ---------
+            ("1.9Un en 19VDC", "seq02_transfert", "Test_19VDC"),
+            ("1.9Un en 115VAC", "seq02_transfert", "Test_115VAC"),
+        ]
+        self.filter_tests_list()
     
-    def selectionner_tous_tests(self):
-        """Sélectionne tous les tests dans la liste"""
-        self.listbox_tests.selection_set(0, tk.END)
-        
-    def deselectionner_tous_tests(self):
-        """Désélectionne tous les tests dans la liste"""
-        self.listbox_tests.selection_clear(0, tk.END)
-        
     def selectionner_repertoire(self):
         """Permet à l'utilisateur de sélectionner un répertoire et charge les tests disponibles"""
         repertoire = filedialog.askdirectory(
@@ -210,149 +333,74 @@ class StatsTestsWindow:
             return
             
         self.repertoire_parent = repertoire
-        self.lbl_repertoire.config(text=f"Répertoire: {os.path.basename(repertoire)}")
+        short_path = os.path.basename(repertoire)
+        if len(repertoire) > 50:
+            short_path = "..." + repertoire[-47:]
+        
+        self.dir_path_label.config(text=short_path, foreground="#2c3e50")
+        self.update_status(f"Analyse du répertoire {short_path}...")
         
         # Rechercher les fichiers SEQ-01/SEQ-02 et charger les tests disponibles
         self.charger_fichiers_seq(repertoire)
-        
+    
     def charger_fichiers_seq(self, repertoire):
         """Cherche les fichiers SEQ-01/SEQ-02 et charge les tests disponibles"""
-        # Chercher les fichiers SEQ-01 et SEQ-02
+        self.update_status("Recherche des fichiers SEQ-01/SEQ-02...")
+        
         self.fichiers_seq01 = []
         self.fichiers_seq02 = []
         
-        # Chercher récursivement dans les sous-répertoires
         for dossier_racine, sous_dossiers, fichiers in os.walk(repertoire):
             for fichier in fichiers:
                 if fichier.startswith("SEQ-01") and fichier.lower().endswith(".html"):
-                    chemin_complet = os.path.join(dossier_racine, fichier)
-                    self.fichiers_seq01.append(chemin_complet)
+                    self.fichiers_seq01.append(os.path.join(dossier_racine, fichier))
                 elif fichier.startswith("SEQ-02") and fichier.lower().endswith(".html"):
-                    chemin_complet = os.path.join(dossier_racine, fichier)
-                    self.fichiers_seq02.append(chemin_complet)
+                    self.fichiers_seq02.append(os.path.join(dossier_racine, fichier))
         
         total_fichiers = len(self.fichiers_seq01) + len(self.fichiers_seq02)
+        
         if total_fichiers == 0:
-            messagebox.showinfo("Information", "Aucun fichier SEQ-01 ou SEQ-02 trouvé.")
+            self.files_info_label.config(text="Aucun fichier SEQ-01 ou SEQ-02 trouvé.", foreground=self.accent_color)
+            self.update_status("Aucun fichier trouvé")
             return
         
-        # Analyser un fichier pour récupérer la liste des tests disponibles
-        # messagebox.showinfo("Information", f"{len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés.\nChargement des tests disponibles...")
-        
-        # Créer manuellement la liste des tests disponibles selon les spécifications
-        self.creer_liste_tests_predefinies()
-        self.afficher_tests_disponibles()
-    
-    def creer_liste_tests_predefinies(self):
-        """
-        Crée une liste prédéfinie des tests à extraire, basée sur les spécifications
-        """
-        self.tests_disponibles = [
-            # Format: (nom_complet, test_parent, identifiant)
-            # --------- Tests SEQ-01 ---------
-            # Test des alimentations à 24VDC
-            ("alim 24VDC +16V", 
-                "seq01_24vdc", "24VDC_+16V"),
-            ("alim 24VDC -16V", 
-                "seq01_24vdc", "24VDC_-16V"),
-            ("alim 24VDC +5V", 
-                "seq01_24vdc", "24VDC_+5V"),
-            ("alim 24VDC -5V", 
-                "seq01_24vdc", "24VDC_-5V"),
-            
-            # Test des alimentations à 115VAC
-            ("alim 115VAC +16V", 
-                "seq01_115vac", "115VAC_+16V"),
-            ("alim 115VAC -16V", 
-                "seq01_115vac", "115VAC_-16V"),
-            
-            # Calcul des résistances
-            ("R46 calculée", 
-                "seq01_resistances", "R46_calculee"),
-            ("R46 à monter", 
-                "seq01_resistances", "R46_monter"),
-            ("R47 calculée", 
-                "seq01_resistances", "R47_calculee"),
-            ("R47 à monter", 
-                "seq01_resistances", "R47_monter"),
-            ("R48 calculée", 
-                "seq01_resistances", "R48_calculee"),
-            ("R48 à monter", 
-                "seq01_resistances", "R48_monter"),
-                
-            # --------- Tests SEQ-02 ---------
-            # Tests de rapport de transfert
-            ("1.9Un en 19VDC", 
-                "seq02_transfert", "Test_19VDC"),
-            ("1.9Un en 115VAC", 
-                "seq02_transfert", "Test_115VAC"),
-                
-            # # Précision du rapport de transfert pour chaque gamme et voie
-            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie U", 
-            #     "seq02_precision", "F1_U"),
-            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie V", 
-            #     "seq02_precision", "F1_V"),
-            # ("SEQ-02 > Roue codeuse F (Gamme 1) > Voie W", 
-            #     "seq02_precision", "F1_W"),
-            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie U", 
-            #     "seq02_precision", "E2_U"),
-            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie V", 
-            #     "seq02_precision", "E2_V"),
-            # ("SEQ-02 > Roue codeuse E (Gamme 2) > Voie W", 
-            #     "seq02_precision", "E2_W"),
-            # # Ajout des autres gammes...
-            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie U", 
-            #     "seq02_precision", "D3_U"),
-            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie V", 
-            #     "seq02_precision", "D3_V"),
-            # ("SEQ-02 > Roue codeuse D (Gamme 3) > Voie W", 
-            #     "seq02_precision", "D3_W"),
-            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie U", 
-            #     "seq02_precision", "115_U"),
-            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie V", 
-            #     "seq02_precision", "115_V"),
-            # ("SEQ-02 > Roue codeuse 1 (Gamme 15) > Voie W", 
-            #     "seq02_precision", "115_W"),
-        ]
-    
-    def afficher_tests_disponibles(self):
-        """Affiche les tests disponibles dans la listbox avec formatage hiérarchique"""
-        # Vider la listbox
-        self.listbox_tests.delete(0, tk.END)
-        
-        # Ajouter les tests avec indentation pour indiquer la hiérarchie
-        for nom_complet, test_parent, identifiant in self.tests_disponibles:
-            self.listbox_tests.insert(tk.END, nom_complet)
+        self.files_info_label.config(
+            text=f"{len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés",
+            foreground="#27ae60"
+        )
+        self.update_status(f"Prêt - {total_fichiers} fichiers trouvés")
     
     def generer_statistiques(self):
         """Génère les statistiques pour les tests sélectionnés"""
-        # Récupérer les indices des tests sélectionnés
-        indices = self.listbox_tests.curselection()
-        if not indices:
+        # Récupérer les tests sélectionnés
+        selected_items = self.tests_tree.selection()
+        if not selected_items:
             messagebox.showinfo("Information", "Veuillez sélectionner au moins un test.")
             return
         
         # Récupérer les noms des tests sélectionnés
-        self.tests_selectionnes = [self.tests_disponibles[i] for i in indices]
+        self.tests_selectionnes = []
+        for item in selected_items:
+            item_text = self.tests_tree.item(item, 'text')
+            # Trouver le test correspondant dans la liste complète
+            for test in self.tests_disponibles:
+                if test[0] == item_text:
+                    self.tests_selectionnes.append(test)
+                    break
         
         # Analyser les fichiers pour récupérer les données
-        # messagebox.showinfo("Information", f"Génération des statistiques pour {len(self.tests_selectionnes)} tests...")
+        self.update_status("Analyse des fichiers en cours...")
         self.analyser_fichiers()
     
     def extraire_valeur_seq01(self, html_content, test_parent, identifiant):
-        """
-        Extrait la valeur d'une mesure spécifique du SEQ-01 à partir du contenu HTML en utilisant des expressions régulières
-        """
-        # Traitement pour les alimentations 24VDC
+        """Identique à l'original"""
         if test_parent == "seq01_24vdc":
-            # Extraire le bloc correspondant à ce test
             block_match = re.search(r"Test des alimentations à 24VDC(.*?)Test des alimentations à 115VAC", html_content, re.DOTALL)
             if not block_match:
                 return None
             
             block = block_match.group(1)
             
-            # Extraire les valeurs selon l'identifiant
             if identifiant == "24VDC_+16V":
                 m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
                 return m_plus16.group(1).strip() if m_plus16 else None
@@ -366,16 +414,13 @@ class StatsTestsWindow:
                 m_minus5 = re.search(r"Lecture mesure -5V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
                 return m_minus5.group(1).strip() if m_minus5 else None
         
-        # Traitement pour les alimentations 115VAC
         elif test_parent == "seq01_115vac":
-            # Extraire le bloc correspondant à ce test
             block_match = re.search(r"Test des alimentations à 115VAC(.*?)Calcul des résistances", html_content, re.DOTALL)
             if not block_match:
                 return None
             
             block = block_match.group(1)
             
-            # Extraire les valeurs selon l'identifiant
             if identifiant == "115VAC_+16V":
                 m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
                 return m_plus16.group(1).strip() if m_plus16 else None
@@ -383,7 +428,6 @@ class StatsTestsWindow:
                 m_minus16 = re.search(r"Lecture mesure -16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
                 return m_minus16.group(1).strip() if m_minus16 else None
         
-        # Traitement pour le calcul des résistances
         elif test_parent == "seq01_resistances":
             if identifiant == "R46_calculee":
                 r46_calc = re.search(r"Résistance R46 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
@@ -407,10 +451,7 @@ class StatsTestsWindow:
         return None
         
     def extraire_valeur_seq02(self, html_content, test_parent, identifiant):
-        """
-        Extrait la valeur d'une mesure spécifique du SEQ-02 à partir du contenu HTML en utilisant des expressions régulières
-        """
-        # Tests 1.9Un
+        """Identique à l'original"""
         if test_parent == "seq02_transfert":
             if identifiant == "Test_19VDC":
                 pattern = r"Test\s*1\.9Un\s+sur\s+2\s+voies\s+en\s+19VDC.*?Lecture\s+mesure\s+-16V\s+AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([-\d\.]+)</span>"
@@ -420,65 +461,88 @@ class StatsTestsWindow:
                 pattern = r"Test\s*1\.9Un\s+sur\s+2\s+voies\s+en\s+115VAC.*?Lecture\s+mesure\s+-16V\s+AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([-\d\.]+)</span>"
                 match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
                 return match.group(1).strip() if match else None
-        
-        # Précision du rapport de transfert
-        # elif test_parent == "seq02_precision":
-        #     # Extraire la gamme et la voie à partir de l'identifiant (ex: F1_U)
-        #     if len(identifiant) < 4:
-        #         return None
-                
-        #     roue_codeuse = identifiant[0]
-        #     gamme_num = identifiant[1:-2]
-        #     voie = identifiant[-1]
-            
-        #     # Pattern pour trouver les sections de précision du rapport de transfert
-        #     pattern = fr"ROUE CODEUSE = {roue_codeuse} \.\. GAMME = {gamme_num} \.\. Voie {voie}.*?Valeur r[^<]*inject[^<]*/ Valeur sortie attendue[^/]*/ Valeur sortie mesur[^/]*/ Pr[^<]*:</td>\s*<td[^>]*>\s*([^<]+)</td>"
-        #     match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
-            
-        #     if match:
-        #         # Renvoyer seulement la précision (dernier élément après le /)
-        #         valeurs = match.group(1).strip().split("/")
-        #         if len(valeurs) >= 4:
-        #             precision = valeurs[3].strip()
-        #             return precision
-            
-        #     return None
-            
         return None
     
     def extraire_numero_serie(self, html_content):
-        """Extrait le numéro de série depuis le contenu HTML en utilisant des expressions régulières"""
-        # Recherche du numéro de série dans l'en-tête
+        """Identique à l'original"""
         sn_match = re.search(r'Serial Number:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*([^<]+)\s*</td>', html_content, re.DOTALL)
         if sn_match and sn_match.group(1).strip() != "NONE":
             return sn_match.group(1).strip()
         
-        # Recherche dans le contenu pour "Numéro de série de la carte en test"
         serie_match = re.search(r'série[^<]*</td>\s*<td[^>]*class="value"[^>]*>\s*([^<]+)\s*</td>', html_content, re.DOTALL)
         if serie_match:
             return serie_match.group(1).strip()
         
-        # Si rien n'est trouvé, on retourne None
         return None
 
     def extraire_statut_test(self, html_content):
-        """Extrait le statut du test (Passed/Failed) depuis le contenu HTML"""
-        # Recherche du statut dans la ligne spécifiée: UUT Result
+        """Identique à l'original"""
         status_match = re.search(r"<tr><td class='hdr_name'><b>UUT Result: </b></td><td class='hdr_value'><b><span style=\"color:[^\"]+;\">([^<]+)</span></b></td></tr>", html_content, re.DOTALL)
         if status_match:
             return status_match.group(1).strip()
         
-        # Rechercher dans un format alternatif possible
         alt_status_match = re.search(r"UUT Result:.*?<td[^>]*class=\"hdr_value\"[^>]*>.*?<span[^>]*>(Passed|Failed)</span>", html_content, re.DOTALL | re.IGNORECASE)
         if alt_status_match:
             return alt_status_match.group(1).strip()
         
-        # Si rien n'est trouvé, on retourne Inconnu
         return "Inconnu"
+    
+    def extraire_date_heure(self, html_content, nom_fichier):
+        """Identique à l'original"""
+        date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        date = date_match.group(1).strip() if date_match else None
+        
+        time_match = re.search(r'Time:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
+        heure = time_match.group(1).strip() if time_match else None
+        
+        if not date or not heure:
+            date, heure = self.extraire_date_heure_du_nom(nom_fichier)
+        
+        return date, heure
+    
+    def extraire_date_heure_du_nom(self, nom_fichier):
+        """Identique à l'original"""
+        match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
+        if match:
+            heure_brute = match.group(1)  # HH MM SS
+            date_brute = match.group(2)   # JJ MM AAAA
+            
+            heure_formatee = heure_brute.replace(" ", ":")
+            date_formatee = date_brute.replace(" ", "/")
+            
+            return date_formatee, heure_formatee
+            
+        return "date_inconnue", "heure_inconnue"
+    
+    def obtenir_cle_tri_chronologique(self, identifiant_unique):
+        """Identique à l'original"""
+        try:
+            parties = identifiant_unique.split(' [')
+            if len(parties) < 2:
+                return (identifiant_unique, 0, 0, 0, 0, 0, 0)
+            
+            numero_serie = parties[0]
+            partie_date_heure = '[' + '['.join(parties[1:])
+            
+            match_date = re.search(r'\[(\d+)/(\d+)/(\d+)\]', partie_date_heure)
+            if not match_date:
+                return (numero_serie, 0, 0, 0, 0, 0, 0)
+            
+            jour, mois, annee = map(int, match_date.groups())
+            
+            match_heure = re.search(r'\[(\d+):(\d+):(\d+)\]', partie_date_heure)
+            if not match_heure:
+                return (numero_serie, annee, mois, jour, 0, 0, 0)
+            
+            heure, minute, seconde = map(int, match_heure.groups())
+            
+            return (numero_serie, annee, mois, jour, heure, minute, seconde)
+        except:
+            return (identifiant_unique, 0, 0, 0, 0, 0, 0)
     
     def analyser_fichiers(self):
         """Analyse tous les fichiers SEQ-01/SEQ-02 et collecte les données pour les tests sélectionnés"""
-        donnees = {}  # Dictionnaire pour stocker les données: {identifiant_unique: {test1: valeur1, test2: valeur2, ...}}
+        donnees = {}  # Dictionnaire pour stocker les données
         
         # Analyse des fichiers SEQ-01
         for fichier in self.fichiers_seq01:
@@ -489,17 +553,17 @@ class StatsTestsWindow:
                 # Extraire le numéro de série
                 numero_serie = self.extraire_numero_serie(html_content) or os.path.basename(os.path.dirname(fichier))
                 
-                # Extraire la date et l'heure du nom de fichier
+                # Extraire la date et l'heure
                 nom_fichier = os.path.basename(fichier)
                 date, heure = self.extraire_date_heure(html_content, nom_fichier)
                 
                 # Extraire le statut du test
                 statut = self.extraire_statut_test(html_content)
                 
-                # Créer un identifiant unique avec le numéro de série, la date et l'heure
+                # Créer un identifiant unique
                 identifiant_unique = f"{numero_serie} [{date}][{heure}]"
                 
-                # Initialiser le dictionnaire pour ce numéro de série si nécessaire
+                # Initialiser le dictionnaire pour ce numéro de série
                 if identifiant_unique not in donnees:
                     donnees[identifiant_unique] = {
                         "Numéro de série": numero_serie,
@@ -530,17 +594,17 @@ class StatsTestsWindow:
                 # Extraire le numéro de série
                 numero_serie = self.extraire_numero_serie(html_content) or os.path.basename(os.path.dirname(fichier))
                 
-                # Extraire la date et l'heure du nom de fichier
+                # Extraire la date et l'heure
                 nom_fichier = os.path.basename(fichier)
                 date, heure = self.extraire_date_heure(html_content, nom_fichier)
                 
                 # Extraire le statut du test
                 statut = self.extraire_statut_test(html_content)
                 
-                # Créer un identifiant unique avec le numéro de série, la date et l'heure
+                # Créer un identifiant unique
                 identifiant_unique = f"{numero_serie} [{date}][{heure}]"
                 
-                # Initialiser le dictionnaire pour ce numéro de série si nécessaire
+                # Initialiser le dictionnaire pour ce numéro de série
                 if identifiant_unique not in donnees:
                     donnees[identifiant_unique] = {
                         "Numéro de série": numero_serie,
@@ -573,11 +637,9 @@ class StatsTestsWindow:
 
         # Si le tri chronologique est activé, on regroupe par numéro de série et on trie
         if self.tri_chrono_var.get():
-            # Grouper les données par numéro de série
             donnees_par_serie = {}
             identifiants_tries = []
             
-            # 1. Trier les identifiants chronologiquement
             for identifiant in sorted(self.data_tests.keys(), key=self.obtenir_cle_tri_chronologique):
                 numero_serie = self.data_tests[identifiant]["Numéro de série"]
                 
@@ -587,37 +649,30 @@ class StatsTestsWindow:
                 donnees_par_serie[numero_serie].append(identifiant)
                 identifiants_tries.append(identifiant)
             
-            # 2. Créer le DataFrame avec l'ordre des identifiants établi
             df = pd.DataFrame.from_dict({id_unique: self.data_tests[id_unique] for id_unique in identifiants_tries}, orient='index')
         else:
-            # Pas de tri chronologique, juste créer le DataFrame normalement
             df = pd.DataFrame.from_dict(self.data_tests, orient='index')
         
         # Supprimer les colonnes "Numéro de série", "Date", "Heure" du DataFrame
-        # Mais conserver la colonne "Statut"
         colonnes_a_supprimer = ["Numéro de série", "Date", "Heure"]
         df = df.drop(columns=colonnes_a_supprimer, errors='ignore')
         
         # Sauvegarder en Excel
         chemin_excel = os.path.join(self.repertoire_parent, "statistiques_SEQ01_SEQ02.xlsx")
         try:
-            # Utilisation d'un nom de feuille sans caractères spéciaux
             df.to_excel(chemin_excel, sheet_name="Statistiques_SEQ01_02")
-            # messagebox.showinfo(
-            #     "Succès", 
-            #     f"Tableau statistique créé avec succès!\n\nFichier: {chemin_excel}"
-            # )
+            self.update_status(f"Rapport généré: {chemin_excel}")
             
             # Ouvrir le fichier Excel
-            os.startfile(chemin_excel)
+            webbrowser.open(chemin_excel)
         
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la création du tableau: {e}")
+            self.update_status("Erreur lors de la génération du rapport")
     
     def generer_rapports_detailles(self):
         """
         Génère les rapports détaillés en utilisant les fonctions de Affiche_resultats.py
-        en se basant sur le répertoire déjà sélectionné
         """
         if not self.repertoire_parent:
             messagebox.showinfo("Information", "Veuillez d'abord sélectionner un répertoire.")
@@ -638,14 +693,15 @@ class StatsTestsWindow:
             
             # Traiter chaque répertoire de numéro de série
             for repertoire in sous_repertoires:
-                # Utiliser la fonction importée de Affiche_resultats.py
                 traiter_repertoire_serie(repertoire, progress_window)
             
             # Afficher un message de fin
             progress_window.show_completion()
+            self.update_status("Rapports détaillés générés avec succès")
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la génération des rapports: {e}")
+            self.update_status("Erreur lors de la génération des rapports")
             import traceback
             traceback.print_exc()
     
@@ -654,5 +710,5 @@ class StatsTestsWindow:
         self.root.mainloop()
 
 if __name__ == "__main__":
-    app = StatsTestsWindow()
+    app = ModernStatsTestsWindow()
     app.lancer()
