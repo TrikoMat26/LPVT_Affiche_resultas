@@ -8,6 +8,8 @@ Ensuite, utilisez l'une des méthodes suivantes pour créer l'exécutable :
   Option 1 : Dans PowerShell, utilisez le point-virgule ; pour chaîner les commandes :
 
 	cd f:\GitHub\LPVT_Affiche_resultas; pyinstaller --onefile --windowed main.py
+	ou
+	cd D:\DATA\Python\GitHub\LPVT_Affiche_résultas; pyinstaller --onefile --windowed LPVT_Gestion_Rapports.py
 
   Option 2 : Ou exécutez simplement la commande directement sans changer de répertoire :
 
