@@ -2,6 +2,8 @@ import os
 import subprocess
 import tkinter as tk
 from tkinter import filedialog, Label, Toplevel
+from tkinter import ttk
+from tkinter import messagebox
 from bs4 import BeautifulSoup
 import sys
 import re
@@ -207,8 +209,8 @@ def formater_details_test(autres_details: List[str], roue_codeuse_info: Dict[str
         formatted_details.append(f"  - Valeur mesurée  : {valeurs_info.get('mesurée', '?')}")
         formatted_details.append(f"  - Précision       : {valeurs_info.get('précision', '?')}")
     
-    # Construire la chaîne de détails finale
-    return "\n".join(formatted_details) if formatted_details else "Pas de détail disponible"
+    # Retourner la chaîne formatée
+    return "\n".join(formatted_details)
 
 def analyser_fichier_html(chemin_fichier: str) -> Dict[str, Any]:
     """
