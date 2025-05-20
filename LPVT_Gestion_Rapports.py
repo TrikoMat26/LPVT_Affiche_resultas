@@ -11,6 +11,46 @@ import subprocess
 from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
 import webbrowser
 
+def extraire_defauts_precision_transfert(html_content):
+    """
+    Extrait les défauts de la partie 'Vérification de la précision du rapport de transfert'
+    Retourne une liste de tuples (nom, precision)
+    """
+    resultats = []
+    soup = BeautifulSoup(html_content, "html.parser")
+    # Parcourt tous les tableaux du rapport
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        i = 0
+        while i < len(rows):
+            tds = rows[i].find_all("td")
+            if len(tds) == 2 and "Status:" in tds[0].get_text(strip=True):
+                status = tds[1].get_text(strip=True)
+                if status.lower() == "failed":
+                    # Cherche la ligne "ROUE CODEUSE = ... Voie ..."
+                    voie = None
+                    precision = None
+                    # Cherche en avant dans les 2 prochaines lignes
+                    for j in range(i+1, min(i+4, len(rows))):
+                        tds2 = rows[j].find_all("td")
+                        if len(tds2) == 2 and "ROUE CODEUSE" in tds2[0].get_text():
+                            voie = tds2[0].get_text(strip=True)
+                        if len(tds2) == 2 and "Précision" in tds2[0].get_text():
+                            # Prend le dernier nombre après le dernier '/'
+                            valeurs = tds2[1].get_text(strip=True)
+                            precision = valeurs.split('/')[-1].strip()
+                    if voie and precision:
+                        # Extrait RC et Voie
+                        import re
+                        m = re.search(r'ROUE CODEUSE = ([^\.]+) .. GAMME = [^\.]+ .. Voie (\w):', voie)
+                        if m:
+                            rc = m.group(1).strip()
+                            v = m.group(2).strip()
+                            nom = f"RC:{rc} - Voie {v}"
+                            resultats.append((nom, precision))
+            i += 1
+    return resultats
+
 class ModernStatsTestsWindow:
     """
     Fenêtre modernisée pour l'analyse statistique des tests SEQ-01 et SEQ-02
@@ -321,6 +361,7 @@ class ModernStatsTestsWindow:
             # --------- Tests SEQ-02 ---------
             ("1.9Un en 19VDC", "seq02_transfert", "Test_19VDC"),
             ("1.9Un en 115VAC", "seq02_transfert", "Test_115VAC"),
+            ("Défauts précision transfert", "seq02_precision_transfert", "precision_transfert_defauts"),
         ]
         self.filter_tests_list()
     
@@ -457,6 +498,11 @@ class ModernStatsTestsWindow:
                 # Cherche la valeur arrondie de "Mesure -16V en V:" pour 115VAC (adapter si besoin)
                 m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", html_content, re.DOTALL)
                 return m.group(1).replace(',', '.').strip() if m else None
+        elif test_parent == "seq02_precision_transfert" and identifiant == "precision_transfert_defauts":
+            # Utilise la fonction déjà définie
+            defauts = extraire_defauts_precision_transfert(html_content)
+            # Retourne sous forme de texte concaténé, ex: "RC:1 - Voie V: -0.2358; RC:2 - Voie I: 0.1234"
+            return "; ".join([f"{nom}: {precision}" for nom, precision in defauts]) if defauts else ""
         return None
     
     def extraire_numero_serie(self, html_content):
