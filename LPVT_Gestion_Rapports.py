@@ -447,16 +447,16 @@ class ModernStatsTestsWindow:
         return None
         
     def extraire_valeur_seq02(self, html_content, test_parent, identifiant):
-        """Identique à l'original"""
+        """Extraction des valeurs arrondies pour SEQ-02"""
         if test_parent == "seq02_transfert":
             if identifiant == "Test_19VDC":
-                pattern = r"Test\s*1\.9Un\s+sur\s+2\s+voies\s+en\s+19VDC.*?Lecture\s+mesure\s+-16V\s+AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([-\d\.]+)</span>"
-                match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
-                return match.group(1).strip() if match else None
+                # Cherche la valeur arrondie de "Mesure -16V en V:"
+                m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", html_content, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
             elif identifiant == "Test_115VAC":
-                pattern = r"Test\s*1\.9Un\s+sur\s+2\s+voies\s+en\s+115VAC.*?Lecture\s+mesure\s+-16V\s+AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([-\d\.]+)</span>"
-                match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
-                return match.group(1).strip() if match else None
+                # Cherche la valeur arrondie de "Mesure -16V en V:" pour 115VAC (adapter si besoin)
+                m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", html_content, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
         return None
     
     def extraire_numero_serie(self, html_content):
