@@ -393,37 +393,36 @@ class ModernStatsTestsWindow:
         self.analyser_fichiers()
     
     def extraire_valeur_seq01(self, html_content, test_parent, identifiant):
-        """Identique à l'original, mais plus robuste pour les blocs tronqués"""
+        """Extraction des valeurs arrondies (Tension mesurée) pour les alimentations"""
         if test_parent == "seq01_24vdc":
             block_match = re.search(r"Test des alimentations à 24VDC(.*?)Test des alimentations à 115VAC", html_content, re.DOTALL)
             if not block_match:
                 return None
             block = block_match.group(1)
             if identifiant == "24VDC_+16V":
-                m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_plus16.group(1).strip() if m_plus16 else None
+                m = re.search(r"Tension \+16V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
             elif identifiant == "24VDC_-16V":
-                m_minus16 = re.search(r"Lecture mesure -16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_minus16.group(1).strip() if m_minus16 else None
+                m = re.search(r"Tension -16V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
             elif identifiant == "24VDC_+5V":
-                m_plus5 = re.search(r"Lecture mesure \+5V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_plus5.group(1).strip() if m_plus5 else None
+                m = re.search(r"Tension \+5V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
             elif identifiant == "24VDC_-5V":
-                m_minus5 = re.search(r"Lecture mesure -5V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_minus5.group(1).strip() if m_minus5 else None
+                m = re.search(r"Tension -5V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
 
         elif test_parent == "seq01_115vac":
-            # Correction ici : on prend tout ce qui suit "Test des alimentations à 115VAC"
             block_match = re.search(r"Test des alimentations à 115VAC(.*?)(?:Calcul des résistances|</div>|</body>|$)", html_content, re.DOTALL)
             if not block_match:
                 return None
             block = block_match.group(1)
             if identifiant == "115VAC_+16V":
-                m_plus16 = re.search(r"Lecture mesure \+16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_plus16.group(1).strip() if m_plus16 else None
+                m = re.search(r"Tension \+16V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
             elif identifiant == "115VAC_-16V":
-                m_minus16 = re.search(r"Lecture mesure -16V AG34461A.*?Measurement\[1\].*?Data:\s*</td>\s*<td[^>]*>.*?>([^<]+)</span>", block, re.DOTALL)
-                return m_minus16.group(1).strip() if m_minus16 else None
+                m = re.search(r"Tension -16V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                return m.group(1).replace(',', '.').strip() if m else None
 
         elif test_parent == "seq01_resistances":
             if identifiant == "R46_calculee":
