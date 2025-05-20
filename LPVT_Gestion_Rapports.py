@@ -468,20 +468,29 @@ class ModernStatsTestsWindow:
 
         elif test_parent == "seq01_resistances":
             if identifiant == "R46_calculee":
-                r46_calc = re.search(r"Résistance R46 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
-                return r46_calc.group(1).strip() if r46_calc else None
+                r46_calc = re.search(r"Résistance R46 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.,]+)\s*</td>", html_content, re.DOTALL)
+                if r46_calc:
+                    return str(int(round(float(r46_calc.group(1).replace(',', '.')))))
+                else:
+                    return None
             elif identifiant == "R46_monter":
                 r46_monter = re.search(r"Résistance R46 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
                 return r46_monter.group(1).strip() if r46_monter else None
             elif identifiant == "R47_calculee":
-                r47_calc = re.search(r"Résistance R47 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
-                return r47_calc.group(1).strip() if r47_calc else None
+                r47_calc = re.search(r"Résistance R47 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.,]+)\s*</td>", html_content, re.DOTALL)
+                if r47_calc:
+                    return str(int(round(float(r47_calc.group(1).replace(',', '.')))))
+                else:
+                    return None
             elif identifiant == "R47_monter":
                 r47_monter = re.search(r"Résistance R47 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
                 return r47_monter.group(1).strip() if r47_monter else None
             elif identifiant == "R48_calculee":
-                r48_calc = re.search(r"Résistance R48 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.]+)\s*</td>", html_content, re.DOTALL)
-                return r48_calc.group(1).strip() if r48_calc else None
+                r48_calc = re.search(r"Résistance R48 calculée:\s*</td>\s*<td[^>]*>\s*([\d\.,]+)\s*</td>", html_content, re.DOTALL)
+                if r48_calc:
+                    return str(int(round(float(r48_calc.group(1).replace(',', '.')))))
+                else:
+                    return None
             elif identifiant == "R48_monter":
                 r48_monter = re.search(r"Résistance R48 à monter:\s*</td>\s*<td[^>]*>\s*Résistance à monter =\s*([\d]+)\s*ohms", html_content, re.DOTALL)
                 return r48_monter.group(1).strip() if r48_monter else None
