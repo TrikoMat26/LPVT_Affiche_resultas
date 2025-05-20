@@ -11,6 +11,7 @@ import subprocess
 from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
 import webbrowser
 import openpyxl
+from openpyxl.styles import Font
 
 def extraire_defauts_precision_transfert(html_content):
     """
@@ -734,6 +735,24 @@ class ModernStatsTestsWindow:
                         pass
                 adjusted_width = max_length + 2
                 ws.column_dimensions[col_letter].width = adjusted_width
+
+            # Coloration en rouge si "à monter" > "calculée"
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                # On cherche les colonnes concernées
+                col_map = {cell.value: idx for idx, cell in enumerate(ws[1])}
+                for prefix in ["R46", "R47", "R48"]:
+                    col_calc = col_map.get(f"{prefix} calculée")
+                    col_mont = col_map.get(f"{prefix} à monter")
+                    if col_calc is not None and col_mont is not None:
+                        cell_calc = row[col_calc]
+                        cell_mont = row[col_mont]
+                        try:
+                            val_calc = int(str(cell_calc.value))
+                            val_mont = int(str(cell_mont.value))
+                            if val_mont > val_calc:
+                                cell_mont.font = Font(color="FF0000")
+                        except Exception:
+                            pass
 
             wb.save(chemin_excel)
 
