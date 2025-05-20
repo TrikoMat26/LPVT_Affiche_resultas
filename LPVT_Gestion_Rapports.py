@@ -13,6 +13,20 @@ import webbrowser
 import openpyxl
 from openpyxl.styles import Font
 
+# Dictionnaire des bornes avec les noms de colonnes exacts
+bornes_alims_seq01 = {
+    # SEQ-01
+    "alim 24VDC +16V": (15.9, 16.3),
+    "alim 24VDC -16V": (-16.3, -15.9),
+    "alim 24VDC +5V": (5.2, 5.5),
+    "alim 24VDC -5V": (-5.5, -5.2),
+    "alim 115VAC +16V": (16, 16.3),
+    "alim 115VAC -16V": (-16.36, -15),
+    # SEQ-02
+    "1.9Un en 19VDC": (-16.3, -15.9),      # à adapter si besoin
+    "1.9Un en 115VAC": (-16.36, -15),      # à adapter si besoin
+}
+
 def extraire_defauts_precision_transfert(html_content):
     """
     Extrait les défauts de la partie 'Vérification de la précision du rapport de transfert'
@@ -705,7 +719,15 @@ class ModernStatsTestsWindow:
             df = pd.DataFrame.from_dict({id_unique: self.data_tests[id_unique] for id_unique in identifiants_tries}, orient='index')
         else:
             df = pd.DataFrame.from_dict(self.data_tests, orient='index')
-        
+
+        # Déplacer la colonne "Défauts précision transfert" juste après "Statut"
+        colonnes = list(df.columns)
+        if "Défauts précision transfert" in colonnes and "Statut" in colonnes:
+            colonnes.remove("Défauts précision transfert")
+            statut_idx = colonnes.index("Statut")
+            colonnes.insert(statut_idx + 1, "Défauts précision transfert")
+            df = df[colonnes]
+
         # Supprimer les colonnes "Numéro de série", "Date", "Heure" du DataFrame
         colonnes_a_supprimer = ["Numéro de série", "Date", "Heure"]
         df = df.drop(columns=colonnes_a_supprimer, errors='ignore')
@@ -736,10 +758,27 @@ class ModernStatsTestsWindow:
                 adjusted_width = max_length + 2
                 ws.column_dimensions[col_letter].width = adjusted_width
 
+
+            from openpyxl.styles import Font
+
+            # Mapping colonne (titre -> index)
+            col_map = {cell.value: idx for idx, cell in enumerate(ws[1])}
+
+            for nom_col, (borne_min, borne_max) in bornes_alims_seq01.items():
+                col_idx = col_map.get(nom_col)
+                if col_idx is not None:
+                    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                        cell = row[col_idx]
+                        try:
+                            val = float(str(cell.value).replace(",", "."))
+                            if not (borne_min <= val <= borne_max):
+                                cell.font = Font(color="FF0000")
+                        except Exception:
+                            pass
+
             # Coloration en rouge si "à monter" > "calculée"
+            col_map = {cell.value: idx for idx, cell in enumerate(ws[1])}
             for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-                # On cherche les colonnes concernées
-                col_map = {cell.value: idx for idx, cell in enumerate(ws[1])}
                 for prefix in ["R46", "R47", "R48"]:
                     col_calc = col_map.get(f"{prefix} calculée")
                     col_mont = col_map.get(f"{prefix} à monter")
@@ -747,8 +786,9 @@ class ModernStatsTestsWindow:
                         cell_calc = row[col_calc]
                         cell_mont = row[col_mont]
                         try:
-                            val_calc = int(str(cell_calc.value))
-                            val_mont = int(str(cell_mont.value))
+                            # Conversion robuste en int (même si texte)
+                            val_calc = int(float(str(cell_calc.value).replace(",", ".").strip()))
+                            val_mont = int(float(str(cell_mont.value).replace(",", ".").strip()))
                             if val_mont > val_calc:
                                 cell_mont.font = Font(color="FF0000")
                         except Exception:
@@ -805,3 +845,4 @@ class ModernStatsTestsWindow:
 if __name__ == "__main__":
     app = ModernStatsTestsWindow()
     app.lancer()
+
