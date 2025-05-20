@@ -10,6 +10,7 @@ import io
 import subprocess
 from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
 import webbrowser
+import openpyxl
 
 def extraire_defauts_precision_transfert(html_content):
     """
@@ -698,16 +699,38 @@ class ModernStatsTestsWindow:
         # Supprimer les colonnes "Numéro de série", "Date", "Heure" du DataFrame
         colonnes_a_supprimer = ["Numéro de série", "Date", "Heure"]
         df = df.drop(columns=colonnes_a_supprimer, errors='ignore')
-        
+
         # Sauvegarder en Excel
         chemin_excel = os.path.join(self.repertoire_parent, "statistiques_SEQ01_SEQ02.xlsx")
         try:
-            df.to_excel(chemin_excel, sheet_name="Statistiques_SEQ01_02")
+            df.to_excel(chemin_excel, sheet_name="Statistiques_SEQ01_02", index=True)
+
+            # Adapter la largeur des colonnes et activer le filtre
+            wb = openpyxl.load_workbook(chemin_excel)
+            ws = wb.active
+
+            # Activer le filtre automatique sur toutes les colonnes
+            ws.auto_filter.ref = ws.dimensions
+
+            # Adapter la largeur de chaque colonne
+            for col in ws.columns:
+                max_length = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    try:
+                        cell_value = str(cell.value) if cell.value is not None else ""
+                        if len(cell_value) > max_length:
+                            max_length = len(cell_value)
+                    except Exception:
+                        pass
+                adjusted_width = max_length + 2
+                ws.column_dimensions[col_letter].width = adjusted_width
+
+            wb.save(chemin_excel)
+
             self.update_status(f"Rapport généré: {chemin_excel}")
-            
-            # Ouvrir le fichier Excel
             webbrowser.open(chemin_excel)
-        
+
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la création du tableau: {e}")
             self.update_status("Erreur lors de la génération du rapport")
