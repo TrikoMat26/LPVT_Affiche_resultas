@@ -23,8 +23,8 @@ bornes_alims_seq01 = {
     "alim 115VAC +16V": (16, 16.3),
     "alim 115VAC -16V": (-16.36, -15),
     # SEQ-02
-    "1.9Un en 19VDC": (-16.3, -15.9),      # à adapter si besoin
-    "1.9Un en 115VAC": (-16.36, -15),      # à adapter si besoin
+    "1.9Un en 19VDC": (-16.6, -15),      # à adapter si besoin
+    "1.9Un en 115VAC": (-16.6, -15),      # à adapter si besoin
 }
 
 def extraire_defauts_precision_transfert(html_content):
@@ -515,14 +515,28 @@ class ModernStatsTestsWindow:
     def extraire_valeur_seq02(self, html_content, test_parent, identifiant):
         """Extraction des valeurs arrondies pour SEQ-02"""
         if test_parent == "seq02_transfert":
+        # Pour 1.9Un en 19VDC
             if identifiant == "Test_19VDC":
-                # Cherche la valeur arrondie de "Mesure -16V en V:"
-                m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", html_content, re.DOTALL)
-                return m.group(1).replace(',', '.').strip() if m else None
+                # Cherche le bloc "Test 1.9Un sur 2 voies en 19VDC"
+                block_match = re.search(
+                    r"Test 1\.9Un sur 2 voies en 19VDC.*?(Mesure -16V en V:.*?Fourchette max en V:.*?Fourchette min en V:.*?)</table>",
+                    html_content, re.DOTALL)
+                if block_match:
+                    block = block_match.group(1)
+                    m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                    return m.group(1).replace(',', '.').strip() if m else None
+                return None
+            # Pour 1.9Un en 115VAC
             elif identifiant == "Test_115VAC":
-                # Cherche la valeur arrondie de "Mesure -16V en V:" pour 115VAC (adapter si besoin)
-                m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", html_content, re.DOTALL)
-                return m.group(1).replace(',', '.').strip() if m else None
+                # Cherche le bloc "Test 1.9Un sur 2 voies en 115VAC"
+                block_match = re.search(
+                    r"Test 1\.9Un sur 2 voies en 115VAC.*?(Mesure -16V en V:.*?Fourchette max en V:.*?Fourchette min en V:.*?)</table>",
+                    html_content, re.DOTALL)
+                if block_match:
+                    block = block_match.group(1)
+                    m = re.search(r"Mesure -16V en V:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+                    return m.group(1).replace(',', '.').strip() if m else None
+                return None
         elif test_parent == "seq02_precision_transfert" and identifiant == "precision_transfert_defauts":
             # Utilise la fonction déjà définie
             defauts = extraire_defauts_precision_transfert(html_content)
