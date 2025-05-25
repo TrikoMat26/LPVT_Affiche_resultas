@@ -503,10 +503,28 @@ Analyser les rapports de test HTML SEQ-01 et SEQ-02 pour générer des statistiq
         self.update_status(f"✅ Prêt - {total_fichiers} fichiers trouvés")
 
     def generer_statistiques(self):
-        selected_items_ids = self.tests_tree.selection()
+        """Génère les statistiques pour les tests sélectionnés.
+           Si aucun test n'est sélectionné, tous les tests sont sélectionnés automatiquement."""
+        
+        selected_items_ids = self.tests_tree.selection() # Récupère les IDs des nœuds sélectionnés
+
+        # --- MODIFICATION ICI ---
         if not selected_items_ids:
-            messagebox.showinfo("Information", "Veuillez sélectionner au moins un test.")
-            return
+            # Aucun test n'est sélectionné, donc on les sélectionne tous
+            self.update_status("ℹ️ Aucun test sélectionné, sélection de tous les tests...")
+            self.selectionner_tous_tests() # Appelle la méthode qui sélectionne tous les tests dans le TreeView
+            self.root.update_idletasks() # Mettre à jour l'interface pour refléter la sélection
+            
+            # Récupérer à nouveau les items sélectionnés après les avoir tous sélectionnés
+            selected_items_ids = self.tests_tree.selection()
+            
+            # Si même après avoir tout sélectionné, la liste est vide (cas très improbable si tests_disponibles est peuplé)
+            if not selected_items_ids:
+                 messagebox.showerror("Erreur", "Impossible de sélectionner les tests automatiquement. Aucun test disponible.")
+                 self.update_status("❌ Erreur: Aucun test disponible pour sélection automatique.")
+                 return
+        # --- FIN MODIFICATION ---
+        
         self.tests_selectionnes = []
         for item_id in selected_items_ids:
             item_values = self.tests_tree.item(item_id, 'values')
@@ -869,7 +887,21 @@ Analyser les rapports de test HTML SEQ-01 et SEQ-02 pour générer des statistiq
                                     val_mont_res_int = int(float(val_mont_res_str))
                                     if val_mont_res_int > val_calc_res_int: cell_mont_res_obj.font = Font(color="FF0000")
                         except (ValueError, TypeError): pass
-            
+
+            # --- AJOUT POUR FIGER LES VOLETS ---
+            # Figer la première ligne et la première colonne.
+            # La cellule 'B2' signifie que tout ce qui est au-dessus de la ligne 2 (donc la ligne 1)
+            # et tout ce qui est à gauche de la colonne B (donc la colonne A) sera figé.
+            if ws.max_row > 1 and ws.max_column > 1 : # S'assurer qu'il y a au moins une cellule de données en B2
+                 ws.freeze_panes = ws['B2']
+            elif ws.max_row > 1 : # S'il n'y a que la colonne A et des lignes, figer juste la ligne 1
+                 ws.freeze_panes = ws['A2']
+            elif ws.max_column > 1 : # S'il n'y a que la ligne 1 et des colonnes, figer juste la colonne A
+                 ws.freeze_panes = ws['B1']
+            # Si la feuille est très petite (1x1), ne rien figer.
+            # --- FIN AJOUT POUR FIGER LES VOLETS ---
+
+
             wb.save(chemin_rapport_xlsm)
             self.update_status(f"✅ Rapport XLSM généré : {os.path.basename(chemin_rapport_xlsm)}")
             try:
