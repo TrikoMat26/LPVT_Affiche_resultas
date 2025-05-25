@@ -12,6 +12,7 @@ from Affiche_resultats import traiter_repertoire_serie, ProgressWindow
 import webbrowser
 import openpyxl
 from openpyxl.styles import Font
+import traceback
 
 # Dictionnaire des bornes avec les noms de colonnes exacts
 bornes_alims_seq01 = {
@@ -23,8 +24,8 @@ bornes_alims_seq01 = {
     "alim 115VAC +16V": (16, 16.3),
     "alim 115VAC -16V": (-16.36, -15),
     # SEQ-02
-    "1.9Un en 19VDC": (-16.6, -15),      # à adapter si besoin
-    "1.9Un en 115VAC": (-16.6, -15),      # à adapter si besoin
+    "1.9Un en 19VDC": (-16.6, -15),
+    "1.9Un en 115VAC": (-16.6, -15),
 }
 
 def extraire_defauts_precision_transfert(html_content):
@@ -69,7 +70,7 @@ def extraire_defauts_precision_transfert(html_content):
 
 class ModernStatsTestsWindow:
     """
-    Fenêtre modernisée pour l'analyse statistique des tests SEQ-01 et SEQ-02
+    Fenêtre modernisée et professionnelle pour l'analyse statistique des tests SEQ-01 et SEQ-02
     avec toutes les fonctionnalités originales
     """
     def __init__(self):
@@ -80,16 +81,16 @@ class ModernStatsTestsWindow:
         # Variables de l'application
         self.fichiers_seq01 = []
         self.fichiers_seq02 = []
-        self.tests_disponibles = []  # Liste de tuples (nom_complet_test, test_parent, identifiant)
+        self.tests_disponibles = []
         self.tests_selectionnes = []
         self.data_tests = {}
         self.repertoire_parent = ""
         
         # Interface graphique
         self.root = tk.Tk()
-        self.root.title("LPVT - Analyse des tests SEQ-01/SEQ-02")
-        self.root.geometry("1100x750")
-        self.root.minsize(900, 650)
+        self.root.title("LPVT Test Analyzer - Interface Moderne")
+        self.root.geometry("1200x800")
+        self.root.minsize(1000, 700)
         
         # Style moderne
         self.setup_styles()
@@ -101,230 +102,405 @@ class ModernStatsTestsWindow:
         self.creer_liste_tests_predefinies()
     
     def setup_styles(self):
-        """Configure les styles modernes pour l'interface"""
+        """Configure les styles modernes et professionnels pour l'interface"""
         style = ttk.Style()
         
-        # Thème général
+        # Thème de base
         style.theme_use('clam')
         
-        # Couleurs
-        bg_color = "#f0f0f0"
-        primary_color = "#2c3e50"
-        secondary_color = "#3498db"
-        accent_color = "#e74c3c"
+        # Palette de couleurs professionnelle et sobre
+        self.colors = {
+            'bg_primary': '#fafafa',           # Fond principal très clair
+            'bg_secondary': '#ffffff',         # Fond des cartes
+            'bg_accent': '#f5f7fa',           # Fond des sections
+            'text_primary': '#2d3748',        # Texte principal
+            'text_secondary': '#718096',      # Texte secondaire
+            'text_muted': '#a0aec0',          # Texte discret
+            'border': '#e2e8f0',             # Bordures subtiles
+            'primary': '#4a5568',             # Couleur principale
+            'success': '#38a169',             # Vert pour les succès
+            'warning': '#ed8936',             # Orange pour les avertissements
+            'error': '#e53e3e',              # Rouge pour les erreurs
+            'info': '#3182ce',               # Bleu pour l'information
+            'accent': '#667eea'               # Accent moderne
+        }
         
-        style.configure('TFrame', background=bg_color)
-        style.configure('TLabel', background=bg_color, font=('Segoe UI', 10))
-        style.configure('TButton', font=('Segoe UI', 10), padding=6)
-        style.configure('Title.TLabel', font=('Segoe UI', 14, 'bold'), foreground=primary_color)
-        style.configure('Secondary.TButton', foreground='white', background=secondary_color)
-        style.configure('Accent.TButton', foreground='white', background=accent_color)
-        style.configure('Treeview', font=('Segoe UI', 9), rowheight=25)
-        style.configure('Treeview.Heading', font=('Segoe UI', 10, 'bold'))
-        style.map('Treeview', background=[('selected', secondary_color)])
+        # Configuration du style global
+        style.configure('TFrame', background=self.colors['bg_primary'])
+        style.configure('Card.TFrame', 
+                       background=self.colors['bg_secondary'],
+                       relief='flat',
+                       borderwidth=1)
         
-        self.bg_color = bg_color
-        self.primary_color = primary_color
-        self.secondary_color = secondary_color
-        self.accent_color = accent_color
-    
+        # Typographie
+        style.configure('TLabel', 
+                       background=self.colors['bg_primary'], 
+                       foreground=self.colors['text_primary'],
+                       font=('Segoe UI', 10))
+        
+        style.configure('Title.TLabel', 
+                       font=('Segoe UI', 18, 'bold'), 
+                       foreground=self.colors['text_primary'],
+                       background=self.colors['bg_primary'])
+        
+        style.configure('Subtitle.TLabel', 
+                       font=('Segoe UI', 12, 'bold'), 
+                       foreground=self.colors['text_secondary'],
+                       background=self.colors['bg_primary'])
+        
+        style.configure('Caption.TLabel', 
+                       font=('Segoe UI', 9), 
+                       foreground=self.colors['text_muted'],
+                       background=self.colors['bg_primary'])
+        
+        style.configure('Status.TLabel', 
+                       font=('Segoe UI', 9), 
+                       foreground=self.colors['info'],
+                       background=self.colors['bg_primary'])
+        
+        # Boutons modernes
+        style.configure('Modern.TButton', 
+                       font=('Segoe UI', 10),
+                       padding=(20, 10),
+                       relief='flat',
+                       borderwidth=0,
+                       focuscolor='none')
+        
+        style.configure('Primary.TButton', 
+                       font=('Segoe UI', 10, 'bold'),
+                       padding=(25, 12),
+                       relief='flat',
+                       borderwidth=0,
+                       background=self.colors['primary'],
+                       foreground='white',
+                       focuscolor='none')
+        
+        style.configure('Success.TButton', 
+                       font=('Segoe UI', 10, 'bold'),
+                       padding=(25, 12),
+                       relief='flat',
+                       borderwidth=0,
+                       background=self.colors['success'],
+                       foreground='white',
+                       focuscolor='none')
+        
+        style.configure('Info.TButton', 
+                       font=('Segoe UI', 10),
+                       padding=(15, 8),
+                       relief='flat',
+                       borderwidth=0,
+                       background=self.colors['info'],
+                       foreground='white',
+                       focuscolor='none')
+        
+        style.configure('Secondary.TButton', 
+                       font=('Segoe UI', 10),
+                       padding=(15, 8),
+                       relief='flat',
+                       borderwidth=1,
+                       background=self.colors['bg_secondary'],
+                       foreground=self.colors['text_primary'],
+                       focuscolor='none')
+        
+        # Effets hover pour les boutons
+        style.map('Primary.TButton',
+                 background=[('active', '#3a4653')])
+        style.map('Success.TButton',
+                 background=[('active', '#2f7d32')])
+        style.map('Info.TButton',
+                 background=[('active', '#2c5aa0')])
+        style.map('Secondary.TButton',
+                 background=[('active', self.colors['bg_accent']),
+                           ('pressed', self.colors['border'])])
+        
+        # TreeView moderne
+        style.configure('Modern.Treeview', 
+                       font=('Segoe UI', 10),
+                       rowheight=30,
+                       background=self.colors['bg_secondary'],
+                       foreground=self.colors['text_primary'],
+                       fieldbackground=self.colors['bg_secondary'],
+                       borderwidth=0,
+                       relief='flat')
+        
+        style.configure('Modern.Treeview.Heading', 
+                       font=('Segoe UI', 10, 'bold'),
+                       background=self.colors['bg_accent'],
+                       foreground=self.colors['text_primary'],
+                       relief='flat',
+                       borderwidth=0)
+        
+        style.map('Modern.Treeview',
+                 background=[('selected', self.colors['accent'])],
+                 foreground=[('selected', 'white')])
+        
+        # Entrées de texte
+        style.configure('Modern.TEntry',
+                       fieldbackground=self.colors['bg_secondary'],
+                       borderwidth=1,
+                       relief='solid',
+                       bordercolor=self.colors['border'],
+                       font=('Segoe UI', 10),
+                       padding=(10, 8))
+        
+        style.map('Modern.TEntry',
+                 bordercolor=[('focus', self.colors['accent'])])
+        
+        # LabelFrame moderne
+        style.configure('Modern.TLabelframe',
+                       background=self.colors['bg_primary'],
+                       borderwidth=0,
+                       relief='flat')
+        
+        style.configure('Modern.TLabelframe.Label',
+                       background=self.colors['bg_primary'],
+                       foreground=self.colors['text_secondary'],
+                       font=('Segoe UI', 11, 'bold'))
+
     def creer_interface_moderne(self):
-        """Crée l'interface utilisateur moderne"""
-        # Frame principal avec padding
-        main_frame = ttk.Frame(self.root, padding=(15, 15, 15, 15))
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        """Crée l'interface utilisateur moderne et professionnelle"""
+        # Configuration de la fenêtre principale
+        self.root.configure(bg=self.colors['bg_primary'])
         
-        # Header avec titre et boutons d'action
-        header_frame = ttk.Frame(main_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 15))
+        # Container principal avec effet de carte
+        main_container = tk.Frame(self.root, bg=self.colors['bg_primary'])
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
-        # Titre
-        title_label = ttk.Label(
-            header_frame, 
-            text="Analyse des tests SEQ-01/SEQ-02", 
-            style='Title.TLabel'
-        )
-        title_label.pack(side=tk.LEFT)
+        # === HEADER SECTION ===
+        header_card = ttk.Frame(main_container, style='Card.TFrame')
+        header_card.pack(fill=tk.X, pady=(0, 20))
         
-        # Boutons d'action à droite
-        action_buttons_frame = ttk.Frame(header_frame)
-        action_buttons_frame.pack(side=tk.RIGHT)
+        header_content = ttk.Frame(header_card)
+        header_content.pack(fill=tk.X, padx=25, pady=20)
         
-        ttk.Button(
-            action_buttons_frame,
-            text="Aide",
-            command=self.show_help,
-            style='Secondary.TButton'
-        ).pack(side=tk.LEFT, padx=5)
+        # Titre principal avec sous-titre
+        title_section = ttk.Frame(header_content)
+        title_section.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # Section de sélection du répertoire
-        dir_frame = ttk.LabelFrame(
-            main_frame, 
-            text=" Répertoire source ", 
-            padding=(10, 5, 10, 10)
-        )
-        dir_frame.pack(fill=tk.X, pady=(0, 15))
+        ttk.Label(title_section, text="LPVT Test Analyzer", style='Title.TLabel').pack(anchor='w')
+        ttk.Label(title_section, text="Analyse statistique des tests SEQ-01 et SEQ-02", 
+                 style='Subtitle.TLabel').pack(anchor='w', pady=(2, 0))
         
-        dir_selection_frame = ttk.Frame(dir_frame)
-        dir_selection_frame.pack(fill=tk.X)
+        # Boutons d'action dans le header
+        header_actions = ttk.Frame(header_content)
+        header_actions.pack(side=tk.RIGHT)
         
-        # Bouton de sélection
-        select_dir_btn = ttk.Button(
-            dir_selection_frame,
-            text="Sélectionner un répertoire",
-            command=self.selectionner_repertoire,
-            style='Secondary.TButton'
-        )
-        select_dir_btn.pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(header_actions, text="💡 Aide", command=self.show_help, 
+                  style='Info.TButton').pack(side=tk.RIGHT, padx=(10, 0))
         
-        # Affichage du chemin
-        self.dir_path_label = ttk.Label(
-            dir_selection_frame, 
-            text="Aucun répertoire sélectionné",
-            foreground="#7f8c8d",
-            font=('Segoe UI', 9)
-        )
-        self.dir_path_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # === DIRECTORY SELECTION SECTION ===
+        dir_card = ttk.Frame(main_container, style='Card.TFrame')
+        dir_card.pack(fill=tk.X, pady=(0, 20))
         
-        # Info sur les fichiers trouvés
-        self.files_info_label = ttk.Label(
-            dir_frame,
-            text="",
-            foreground=self.secondary_color,
-            font=('Segoe UI', 9)
-        )
-        self.files_info_label.pack(fill=tk.X, pady=(5, 0))
+        dir_content = ttk.Frame(dir_card)
+        dir_content.pack(fill=tk.X, padx=25, pady=20)
         
-        # Section de sélection des tests
-        tests_frame = ttk.LabelFrame(
-            main_frame, 
-            text=" Sélection des tests à analyser ", 
-            padding=(10, 5, 10, 10))
-        tests_frame.pack(fill=tk.BOTH, expand=True)
+        # Section label
+        ttk.Label(dir_content, text="📁 Répertoire source", 
+                 style='Subtitle.TLabel').pack(anchor='w', pady=(0, 15))
         
-        # Contrôles de sélection en haut
-        tests_controls_frame = ttk.Frame(tests_frame)
-        tests_controls_frame.pack(fill=tk.X, pady=(0, 10))
+        # Directory selection row
+        dir_row = ttk.Frame(dir_content)
+        dir_row.pack(fill=tk.X)
         
-        ttk.Button(
-            tests_controls_frame,
-            text="Tout sélectionner",
-            command=self.selectionner_tous_tests,
-            style='Secondary.TButton'
-        ).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(dir_row, text="Parcourir...", command=self.selectionner_repertoire,
+                  style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 15))
         
-        ttk.Button(
-            tests_controls_frame,
-            text="Tout désélectionner",
-            command=self.deselectionner_tous_tests,
-            style='Secondary.TButton'
-        ).pack(side=tk.LEFT)
+        # Path display avec style moderne
+        path_container = ttk.Frame(dir_row)
+        path_container.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # Checkbox de tri chronologique à droite
+        self.dir_path_label = ttk.Label(path_container, text="Aucun répertoire sélectionné",
+                                       style='Caption.TLabel')
+        self.dir_path_label.pack(anchor='w')
+        
+        # Files info
+        self.files_info_label = ttk.Label(dir_content, text="", style='Status.TLabel')
+        self.files_info_label.pack(anchor='w', pady=(10, 0))
+        
+        # === TESTS SELECTION SECTION ===
+        tests_card = ttk.Frame(main_container, style='Card.TFrame')
+        tests_card.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        tests_content = ttk.Frame(tests_card)
+        tests_content.pack(fill=tk.BOTH, expand=True, padx=25, pady=20)
+        
+        # Section header
+        tests_header = ttk.Frame(tests_content)
+        tests_header.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Label(tests_header, text="⚡ Sélection des tests à analyser", 
+                 style='Subtitle.TLabel').pack(side=tk.LEFT)
+        
+        # Options à droite
+        options_frame = ttk.Frame(tests_header)
+        options_frame.pack(side=tk.RIGHT)
+        
         self.tri_chrono_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            tests_controls_frame,
-            text="Tri chronologique par n° de série",
-            variable=self.tri_chrono_var,
-            onvalue=True,
-            offvalue=False
-        ).pack(side=tk.RIGHT)
+        ttk.Checkbutton(options_frame, text="📅 Tri chronologique par n° de série",
+                       variable=self.tri_chrono_var).pack()
         
-        # Liste des tests avec scrollbar et recherche
-        tests_list_container = ttk.Frame(tests_frame)
-        tests_list_container.pack(fill=tk.BOTH, expand=True)
+        # Controls row
+        controls_row = ttk.Frame(tests_content)
+        controls_row.pack(fill=tk.X, pady=(0, 15))
         
-        # Barre de recherche
-        search_frame = ttk.Frame(tests_list_container)
-        search_frame.pack(fill=tk.X, pady=(0, 5))
+        # Selection buttons
+        selection_buttons = ttk.Frame(controls_row)
+        selection_buttons.pack(side=tk.LEFT)
         
-        ttk.Label(search_frame, text="Rechercher:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(selection_buttons, text="Tout sélectionner", 
+                  command=self.selectionner_tous_tests, style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(selection_buttons, text="Tout désélectionner", 
+                  command=self.deselectionner_tous_tests, style='Secondary.TButton').pack(side=tk.LEFT)
+        
+        # Search bar à droite
+        search_container = ttk.Frame(controls_row)
+        search_container.pack(side=tk.RIGHT)
+        
+        ttk.Label(search_container, text="🔍", font=('Segoe UI', 12)).pack(side=tk.LEFT, padx=(0, 5))
         
         self.search_var = tk.StringVar()
-        search_entry = ttk.Entry(
-            search_frame,
-            textvariable=self.search_var
-        )
-        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        search_entry = ttk.Entry(search_container, textvariable=self.search_var, 
+                               style='Modern.TEntry', width=25)
+        search_entry.pack(side=tk.LEFT)
         search_entry.bind('<KeyRelease>', self.filter_tests_list)
         
-        # Liste des tests dans un Treeview
-        self.tests_tree = ttk.Treeview(
-            tests_list_container,
-            selectmode='extended',
-            columns=('test_id'),
-            show='tree',
-            height=15
-        )
+        # Tests list avec container moderne
+        list_container = ttk.Frame(tests_content)
+        list_container.pack(fill=tk.BOTH, expand=True)
         
-        scroll_y = ttk.Scrollbar(
-            tests_list_container, 
-            orient=tk.VERTICAL, 
-            command=self.tests_tree.yview
-        )
-        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        # TreeView avec style moderne
+        self.tests_tree = ttk.Treeview(list_container, selectmode='extended',
+                                     columns=('category',), show='tree headings',
+                                     style='Modern.Treeview', height=12)
         
-        self.tests_tree.configure(yscrollcommand=scroll_y.set)
-        self.tests_tree.pack(fill=tk.BOTH, expand=True)
+        # Colonnes
+        self.tests_tree.heading('#0', text='Test', anchor='w')
+        self.tests_tree.heading('category', text='Catégorie', anchor='w')
+        self.tests_tree.column('#0', width=300, minwidth=200)
+        self.tests_tree.column('category', width=200, minwidth=150)
         
-        # Style pour les éléments sélectionnés
-        self.tests_tree.tag_configure('selected', background=self.secondary_color, foreground='white')
+        # Scrollbar moderne
+        scrollbar = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.tests_tree.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tests_tree.configure(yscrollcommand=scrollbar.set)
+        self.tests_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # Boutons d'action en bas
-        action_frame = ttk.Frame(main_frame)
-        action_frame.pack(fill=tk.X, pady=(15, 0))
+        # === ACTIONS SECTION ===
+        actions_card = ttk.Frame(main_container, style='Card.TFrame')
+        actions_card.pack(fill=tk.X)
         
-        ttk.Button(
-            action_frame,
-            text="Générer le rapport statistique",
-            command=self.generer_statistiques,
-            style='Accent.TButton'
-        ).pack(side=tk.LEFT, padx=(0, 10))
+        actions_content = ttk.Frame(actions_card)
+        actions_content.pack(fill=tk.X, padx=25, pady=20)
         
-        ttk.Button(
-            action_frame,
-            text="Générer les rapports détaillés",
-            command=self.generer_rapports_detailles,
-            style='Secondary.TButton'
-        ).pack(side=tk.LEFT)
+        # Actions row
+        actions_row = ttk.Frame(actions_content)
+        actions_row.pack(fill=tk.X)
         
-        # Barre de status
-        self.status_bar = ttk.Frame(main_frame, height=25)
-        self.status_bar.pack(fill=tk.X, pady=(15, 0))
+        # Boutons d'action principaux
+        ttk.Button(actions_row, text="📊 Générer le rapport statistique",
+                  command=self.generer_statistiques, style='Success.TButton').pack(side=tk.LEFT, padx=(0, 15))
         
-        self.status_label = ttk.Label(
-            self.status_bar,
-            text="Prêt",
-            foreground="#7f8c8d",
-            font=('Segoe UI', 9)
-        )
+        ttk.Button(actions_row, text="📄 Générer les rapports détaillés",
+                  command=self.generer_rapports_detailles, style='Primary.TButton').pack(side=tk.LEFT)
+        
+        # Status bar moderne
+        status_container = ttk.Frame(actions_content)
+        status_container.pack(fill=tk.X, pady=(15, 0))
+        
+        status_separator = ttk.Frame(status_container, height=1)
+        status_separator.pack(fill=tk.X, pady=(0, 10))
+        status_separator.configure(style='Card.TFrame')
+        
+        self.status_label = ttk.Label(status_container, text="✅ Prêt à traiter vos fichiers", 
+                                     style='Status.TLabel')
         self.status_label.pack(side=tk.LEFT)
         
-        # Configurer le redimensionnement
-        main_frame.grid_rowconfigure(2, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
-    
+        # Indicateur de version/copyright à droite
+        ttk.Label(status_container, text="LPVT Analyzer v2.0", 
+                 style='Caption.TLabel').pack(side=tk.RIGHT)
+
     def show_help(self):
-        """Affiche une aide contextuelle"""
-        help_text = """
-        Aide - Analyse des tests SEQ-01/SEQ-02
+        """Affiche une aide contextuelle moderne"""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Aide - LPVT Test Analyzer")
+        help_window.geometry("650x550")
+        help_window.configure(bg=self.colors['bg_primary'])
+        help_window.transient(self.root)
+        help_window.grab_set()
         
-        1. Sélectionnez un répertoire contenant les fichiers HTML des tests
-        2. Sélectionnez les tests à analyser dans la liste
-        3. Cliquez sur "Générer le rapport statistique" pour créer un fichier Excel
-        4. Utilisez "Générer les rapports détaillés" pour créer des rapports PDF
+        # Centrer la fenêtre
+        help_window.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
         
-        Options :
-        - Tri chronologique : organise les résultats par numéro de série et date
-        - Barre de recherche : filtre la liste des tests disponibles
-        """
-        messagebox.showinfo("Aide", help_text.strip())
-    
+        # Container principal
+        main_frame = ttk.Frame(help_window, style='Card.TFrame')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
+        
+        # Titre
+        ttk.Label(content_frame, text="💡 Guide d'utilisation", 
+                 style='Title.TLabel').pack(anchor='w', pady=(0, 20))
+        
+        # Contenu de l'aide
+        help_content = """🎯 OBJECTIF
+Analyser les rapports de test HTML SEQ-01 et SEQ-02 pour générer des statistiques et des rapports détaillés.
+
+📋 ÉTAPES D'UTILISATION
+
+1️⃣ SÉLECTION DU RÉPERTOIRE
+   • Cliquez sur "Parcourir..." dans la section "Répertoire source"
+   • Sélectionnez le dossier parent contenant les sous-dossiers des numéros de série
+   • Structure attendue: Dossier_Parent/SN12345/fichiers_HTML
+
+2️⃣ SÉLECTION DES TESTS
+   • Choisissez les paramètres à analyser dans la liste organisée par catégories
+   • Utilisez la barre de recherche 🔍 pour filtrer rapidement
+   • Boutons "Tout sélectionner" / "Tout désélectionner" disponibles
+
+3️⃣ GÉNÉRATION DES RAPPORTS
+   📊 Rapport Statistique: Crée un fichier Excel avec toutes les mesures
+   📄 Rapports Détaillés: Génère un rapport texte par numéro de série
+
+⚙️ OPTIONS AVANCÉES
+   📅 Tri chronologique: Organise les résultats par n° de série et date/heure
+   🎯 Filtre par recherche: Trouve rapidement les tests souhaités
+
+💡 CONSEILS
+   • Les valeurs hors spécifications apparaissent en rouge dans Excel
+   • Les rapports s'ouvrent automatiquement après génération
+   • Une barre de progression indique l'avancement du traitement"""
+        
+        # Zone de texte avec scrollbar
+        text_frame = ttk.Frame(content_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+        
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=('Segoe UI', 10),
+                             bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                             relief='flat', borderwidth=0, padx=15, pady=15)
+        
+        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.insert('1.0', help_content.strip())
+        text_widget.configure(state='disabled')
+        
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Bouton fermer
+        button_frame = ttk.Frame(content_frame)
+        button_frame.pack(fill=tk.X, pady=(15, 0))
+        
+        ttk.Button(button_frame, text="Fermer", command=help_window.destroy,
+                  style='Primary.TButton').pack(side=tk.RIGHT)
+
     def update_status(self, message):
         """Met à jour la barre de status"""
         self.status_label.config(text=message)
         self.root.update_idletasks()
-    
+
     def filter_tests_list(self, event=None):
         """Filtre la liste des tests en fonction de la recherche"""
         search_term = self.search_var.get().lower()
@@ -333,20 +509,50 @@ class ModernStatsTestsWindow:
         for item in self.tests_tree.get_children():
             self.tests_tree.delete(item)
         
-        # Ajouter les tests qui correspondent au terme de recherche
-        for idx, (nom_complet, test_parent, identifiant) in enumerate(self.tests_disponibles):
+        # Grouper les tests par catégorie pour un affichage organisé
+        categories = {
+            'seq01_24vdc': '🔋 Alimentations 24VDC',
+            'seq01_115vac': '⚡ Alimentations 115VAC', 
+            'seq01_resistances': '🔧 Résistances',
+            'seq02_transfert': '📊 Tests de transfert',
+            'seq02_precision_transfert': '🎯 Précision transfert'
+        }
+        
+        # Regrouper les tests filtrés par catégorie
+        filtered_by_category = {}
+        for nom_complet, test_parent, identifiant in self.tests_disponibles:
             if search_term in nom_complet.lower():
-                self.tests_tree.insert('', 'end', text=nom_complet, values=(identifiant))
+                if test_parent not in filtered_by_category:
+                    filtered_by_category[test_parent] = []
+                filtered_by_category[test_parent].append((nom_complet, identifiant))
+        
+        # Ajouter les tests organisés par catégorie
+        for category, tests in filtered_by_category.items():
+            category_name = categories.get(category, category)
+            # Ajouter le nœud de catégorie
+            category_node = self.tests_tree.insert('', 'end', text=category_name, 
+                                                  values=(f'category_{category}',), open=True)
+            
+            # Ajouter les tests sous cette catégorie
+            for nom_complet, identifiant in tests:
+                self.tests_tree.insert(category_node, 'end', text=f"  {nom_complet}", 
+                                     values=(identifiant,))
     
     def selectionner_tous_tests(self):
-        """Sélectionne tous les tests dans la liste"""
+        """Sélectionne tous les tests dans la liste (pas les catégories)"""
         for item in self.tests_tree.get_children():
-            self.tests_tree.selection_add(item)
+            # Sélectionner les enfants (tests) mais pas les parents (catégories)
+            for child in self.tests_tree.get_children(item):
+                self.tests_tree.selection_add(child)
     
     def deselectionner_tous_tests(self):
         """Désélectionne tous les tests dans la liste"""
         self.tests_tree.selection_remove(self.tests_tree.get_children())
-    
+        # Aussi désélectionner tous les enfants
+        for item in self.tests_tree.get_children():
+            for child in self.tests_tree.get_children(item):
+                self.tests_tree.selection_remove(child)
+
     def configurer_encodage(self):
         """Configure l'encodage pour les caractères accentués"""
         try:
@@ -380,7 +586,7 @@ class ModernStatsTestsWindow:
             ("Défauts précision transfert", "seq02_precision_transfert", "precision_transfert_defauts"),
         ]
         self.filter_tests_list()
-    
+
     def selectionner_repertoire(self):
         """Permet à l'utilisateur de sélectionner un répertoire et charge les tests disponibles"""
         repertoire = filedialog.askdirectory(
@@ -394,15 +600,15 @@ class ModernStatsTestsWindow:
         if len(repertoire) > 50:
             short_path = "..." + repertoire[-47:]
         
-        self.dir_path_label.config(text=short_path, foreground="#2c3e50")
-        self.update_status(f"Analyse du répertoire {short_path}...")
+        self.dir_path_label.config(text=short_path, foreground=self.colors['text_primary'])
+        self.update_status(f"🔍 Analyse du répertoire {short_path}...")
         
         # Rechercher les fichiers SEQ-01/SEQ-02 et charger les tests disponibles
         self.charger_fichiers_seq(repertoire)
-    
+
     def charger_fichiers_seq(self, repertoire):
         """Cherche les fichiers SEQ-01/SEQ-02 et charge les tests disponibles"""
-        self.update_status("Recherche des fichiers SEQ-01/SEQ-02...")
+        self.update_status("🔍 Recherche des fichiers SEQ-01/SEQ-02...")
         
         self.fichiers_seq01 = []
         self.fichiers_seq02 = []
@@ -417,15 +623,19 @@ class ModernStatsTestsWindow:
         total_fichiers = len(self.fichiers_seq01) + len(self.fichiers_seq02)
         
         if total_fichiers == 0:
-            self.files_info_label.config(text="Aucun fichier SEQ-01 ou SEQ-02 trouvé.", foreground=self.accent_color)
-            self.update_status("Aucun fichier trouvé")
+            self.files_info_label.config(text="❌ Aucun fichier SEQ-01 ou SEQ-02 trouvé.", 
+                                        foreground=self.colors['error'])
+            self.update_status("❌ Aucun fichier trouvé")
             return
         
         self.files_info_label.config(
-            text=f"{len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés",
-            foreground="#27ae60"
+            text=f"✅ {len(self.fichiers_seq01)} fichiers SEQ-01 et {len(self.fichiers_seq02)} fichiers SEQ-02 trouvés",
+            foreground=self.colors['success']
         )
-        self.update_status(f"Prêt - {total_fichiers} fichiers trouvés")
+        self.update_status(f"✅ Prêt - {total_fichiers} fichiers trouvés")
+
+    # === CONTINUATION DES FONCTIONS ===
+    # (Les fonctions suivantes restent identiques à l'original mais avec des messages de status améliorés)
     
     def generer_statistiques(self):
         """Génère les statistiques pour les tests sélectionnés"""
@@ -438,17 +648,31 @@ class ModernStatsTestsWindow:
         # Récupérer les noms des tests sélectionnés
         self.tests_selectionnes = []
         for item in selected_items:
-            item_text = self.tests_tree.item(item, 'text')
+            item_text = self.tests_tree.item(item, 'text').strip()
+            item_values = self.tests_tree.item(item, 'values')
+            
+            # Ignorer les catégories (qui commencent par 'category_')
+            if item_values and len(item_values) > 0 and item_values[0].startswith('category_'):
+                continue
+                
+            # Nettoyer le texte (enlever les espaces en début si c'est un enfant)
+            if item_text.startswith('  '):
+                item_text = item_text.strip()
+            
             # Trouver le test correspondant dans la liste complète
             for test in self.tests_disponibles:
                 if test[0] == item_text:
                     self.tests_selectionnes.append(test)
                     break
         
+        if not self.tests_selectionnes:
+            messagebox.showinfo("Information", "Aucun test valide sélectionné.")
+            return
+        
         # Analyser les fichiers pour récupérer les données
-        self.update_status("Analyse des fichiers en cours...")
+        self.update_status("🔄 Analyse des fichiers en cours...")
         self.analyser_fichiers()
-    
+
     def extraire_valeur_seq01(self, html_content, test_parent, identifiant):
         """Extraction des valeurs arrondies (Tension mesurée) pour les alimentations"""
         if test_parent == "seq01_24vdc":
@@ -515,7 +739,7 @@ class ModernStatsTestsWindow:
     def extraire_valeur_seq02(self, html_content, test_parent, identifiant):
         """Extraction des valeurs arrondies pour SEQ-02"""
         if test_parent == "seq02_transfert":
-        # Pour 1.9Un en 19VDC
+            # Pour 1.9Un en 19VDC
             if identifiant == "Test_19VDC":
                 # Cherche le bloc "Test 1.9Un sur 2 voies en 19VDC"
                 block_match = re.search(
@@ -543,7 +767,7 @@ class ModernStatsTestsWindow:
             # Retourne sous forme de texte concaténé, ex: "RC:1 - Voie V: -0.2358; RC:2 - Voie I: 0.1234"
             return "; ".join([f"{nom}: {precision}" for nom, precision in defauts]) if defauts else ""
         return None
-    
+
     def extraire_numero_serie(self, html_content):
         """Identique à l'original"""
         sn_match = re.search(r'Serial Number:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*([^<]+)\s*</td>', html_content, re.DOTALL)
@@ -567,7 +791,7 @@ class ModernStatsTestsWindow:
             return alt_status_match.group(1).strip()
         
         return "Inconnu"
-    
+
     def extraire_date_heure(self, html_content, nom_fichier):
         """Identique à l'original"""
         date_match = re.search(r'Date:</td>\s*<td[^>]*class="hdr_value"[^>]*>\s*<b>([^<]+)</b>', html_content, re.DOTALL)
@@ -580,7 +804,7 @@ class ModernStatsTestsWindow:
             date, heure = self.extraire_date_heure_du_nom(nom_fichier)
         
         return date, heure
-    
+
     def extraire_date_heure_du_nom(self, nom_fichier):
         """Identique à l'original"""
         match = re.search(r'\[(\d+ \d+ \d+)\]\[(\d+ \d+ \d+)\]', nom_fichier)
@@ -594,7 +818,7 @@ class ModernStatsTestsWindow:
             return date_formatee, heure_formatee
             
         return "date_inconnue", "heure_inconnue"
-    
+
     def obtenir_cle_tri_chronologique(self, identifiant_unique):
         """Identique à l'original"""
         try:
@@ -620,7 +844,7 @@ class ModernStatsTestsWindow:
             return (numero_serie, annee, mois, jour, heure, minute, seconde)
         except:
             return (identifiant_unique, 0, 0, 0, 0, 0, 0)
-    
+
     def analyser_fichiers(self):
         """Analyse tous les fichiers SEQ-01/SEQ-02 et collecte les données pour les tests sélectionnés"""
         donnees = {}  # Dictionnaire pour stocker les données
@@ -663,7 +887,6 @@ class ModernStatsTestsWindow:
             
             except Exception as e:
                 print(f"Erreur lors de l'analyse du fichier SEQ-01 {fichier}: {e}")
-                import traceback
                 traceback.print_exc()
         
         # Analyse des fichiers SEQ-02
@@ -704,12 +927,11 @@ class ModernStatsTestsWindow:
             
             except Exception as e:
                 print(f"Erreur lors de l'analyse du fichier SEQ-02 {fichier}: {e}")
-                import traceback
                 traceback.print_exc()
         
         self.data_tests = donnees
         self.creer_tableau_statistiques()
-    
+
     def creer_tableau_statistiques(self):
         """Crée un tableau statistique à partir des données collectées"""
         if not self.data_tests:
@@ -749,6 +971,7 @@ class ModernStatsTestsWindow:
         # Sauvegarder en Excel
         chemin_excel = os.path.join(self.repertoire_parent, "statistiques_SEQ01_SEQ02.xlsx")
         try:
+            self.update_status("📊 Génération du fichier Excel...")
             df.to_excel(chemin_excel, sheet_name="Statistiques_SEQ01_02", index=True)
 
             # Adapter la largeur des colonnes et activer le filtre
@@ -771,9 +994,6 @@ class ModernStatsTestsWindow:
                         pass
                 adjusted_width = max_length + 2
                 ws.column_dimensions[col_letter].width = adjusted_width
-
-
-            from openpyxl.styles import Font
 
             # Mapping colonne (titre -> index)
             col_map = {cell.value: idx for idx, cell in enumerate(ws[1])}
@@ -810,13 +1030,13 @@ class ModernStatsTestsWindow:
 
             wb.save(chemin_excel)
 
-            self.update_status(f"Rapport généré: {chemin_excel}")
+            self.update_status(f"✅ Rapport généré avec succès: {os.path.basename(chemin_excel)}")
             webbrowser.open(chemin_excel)
 
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la création du tableau: {e}")
-            self.update_status("Erreur lors de la génération du rapport")
-    
+            self.update_status("❌ Erreur lors de la génération du rapport")
+
     def generer_rapports_detailles(self):
         """
         Génère les rapports détaillés en utilisant les fonctions de Affiche_resultats.py
@@ -826,6 +1046,7 @@ class ModernStatsTestsWindow:
             return
         
         try:
+            self.update_status("🔍 Recherche des sous-répertoires...")
             # Obtenir tous les sous-répertoires directs (les numéros de série)
             sous_repertoires = [os.path.join(self.repertoire_parent, d) for d in os.listdir(self.repertoire_parent) 
                                if os.path.isdir(os.path.join(self.repertoire_parent, d))]
@@ -835,6 +1056,7 @@ class ModernStatsTestsWindow:
                                     "Aucun sous-répertoire (numéro de série) trouvé dans le répertoire sélectionné.")
                 return
             
+            self.update_status(f"📄 Génération des rapports pour {len(sous_repertoires)} séries...")
             # Créer une fenêtre de progression
             progress_window = ProgressWindow(total_files=len(sous_repertoires))
             
@@ -844,14 +1066,14 @@ class ModernStatsTestsWindow:
             
             # Afficher un message de fin
             progress_window.show_completion()
-            self.update_status("Rapports détaillés générés avec succès")
+            self.update_status("✅ Rapports détaillés générés avec succès")
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la génération des rapports: {e}")
-            self.update_status("Erreur lors de la génération des rapports")
+            self.update_status("❌ Erreur lors de la génération des rapports")
             import traceback
             traceback.print_exc()
-    
+
     def lancer(self):
         """Lance l'application"""
         self.root.mainloop()
@@ -859,4 +1081,3 @@ class ModernStatsTestsWindow:
 if __name__ == "__main__":
     app = ModernStatsTestsWindow()
     app.lancer()
-
