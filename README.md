@@ -43,14 +43,17 @@ L'outil est conçu pour rationaliser le processus d'examen des résultats des te
 *(Tkinter est généralement inclus avec les distributions Python standard)*
 
 ## Installation
-
-1.  **Clonez le dépôt :**
+0.  **Générer l'executable**
+    ```bash
+    python -m PyInstaller LPVT_Gestion_Rapports.spec
+    ```
+2.  **Clonez le dépôt :**
     ```bash
     git clone <url-de-votre-depot>
     cd <repertoire-du-depot>
     ```
 
-2.  **Installez les dépendances :**
+3.  **Installez les dépendances :**
     Il est recommandé d'utiliser un environnement virtuel.
     ```bash
     # Créez un environnement virtuel (optionnel mais recommandé)
