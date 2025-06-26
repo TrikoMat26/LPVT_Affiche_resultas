@@ -35,12 +35,15 @@ def get_config_path() -> Path:
     app_config_dir.mkdir(parents=True, exist_ok=True)
     return app_config_dir / CONFIG_FILE_NAME
 
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+def resource_path(relative_path: str) -> Path:
+    """Obtient le chemin absolu d'une ressource, fonctionne pour le dev et pour PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        # Running as a bundled executable.
+        base_path = Path(sys.executable).parent
+    else:
+        # Running in a normal Python environment.
+        base_path = Path(os.path.abspath("."))
+    return base_path / relative_path
 
 def extraire_defauts_precision_transfert(html_content):
     resultats = []

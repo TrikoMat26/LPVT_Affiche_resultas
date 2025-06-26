@@ -5,7 +5,7 @@ a = Analysis(
     ['LPVT_Gestion_Rapports.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('template_statistiques.xlsm', '.')] ,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
