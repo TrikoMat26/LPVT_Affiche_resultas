@@ -458,7 +458,7 @@ class ModernStatsTestsWindow:
 
     def extraire_valeur_seq01(self, html_content, test_parent, identifiant): # Votre version originale
         if test_parent == "seq01_24vdc":
-            block_match = re.search(r"Test des alimentations à 24VDC(.*?)Test des alimentations à 115VAC", html_content, re.DOTALL)
+            block_match = re.search(r"Test des alimentations à 24VDC(.*?)(?:Test des alimentations à 115VAC|Calcul des résistances|</body>|$)", html_content, re.DOTALL)
             if not block_match: return None
             block = block_match.group(1)
             if identifiant == "24VDC_+16V": m = re.search(r"Tension \+16V mesurée:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)

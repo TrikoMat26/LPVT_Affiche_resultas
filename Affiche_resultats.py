@@ -592,3 +592,24 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+def extraire_valeur_seq01(self, html_content, test_parent, identifiant):
+    if test_parent == "seq01_24vdc":
+        # On prend tout le bloc "Test des alimentations à 24VDC" jusqu'à "Test des alimentations à 115VAC" ou la fin
+        block_match = re.search(r"Test des alimentations à 24VDC(.*?)(Test des alimentations à 115VAC|</table>|</div>|</body>|$)", html_content, re.DOTALL)
+        if not block_match:
+            return None
+        block = block_match.group(1)
+        if identifiant == "24VDC_+16V":
+            m = re.search(r"Tension \+16V mesur[ée]:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+            return m.group(1).replace(',', '.').strip() if m else None
+        elif identifiant == "24VDC_-16V":
+            m = re.search(r"Tension -16V mesur[ée]:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+            return m.group(1).replace(',', '.').strip() if m else None
+        elif identifiant == "24VDC_+5V":
+            m = re.search(r"Tension \+5V mesur[ée]:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+            return m.group(1).replace(',', '.').strip() if m else None
+        elif identifiant == "24VDC_-5V":
+            m = re.search(r"Tension -5V mesur[ée]:\s*</td>\s*<td[^>]*>\s*([-\d\.,]+)", block, re.DOTALL)
+            return m.group(1).replace(',', '.').strip() if m else None
+    # ...le reste inchangé...

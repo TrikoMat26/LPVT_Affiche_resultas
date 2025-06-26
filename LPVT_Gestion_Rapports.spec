@@ -1,12 +1,12 @@
-# LPVT_Gestion_Rapports.spec
 # -*- mode: python ; coding: utf-8 -*-
+
 
 a = Analysis(
     ['LPVT_Gestion_Rapports.py'],
     pathex=[],
     binaries=[],
-    datas=[('template_statistiques.xlsm', '.')],  # <--- CETTE LIGNE EST IMPORTANTE
-    hiddenimports=['openpyxl.cell._writer'],       # Utile pour openpyxl
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -29,7 +29,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False, # Mettez à True si vous voulez voir les print pour le débogage
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
